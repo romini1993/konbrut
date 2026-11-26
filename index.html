@@ -1828,6 +1828,7 @@
         // Daftar trader yang diikuti, dikirim Apps Script lewat action=get (tab "Lead" di Sheet).
         // Satu akun/login bisa punya banyak lead; tiap trade menyimpan id lead-nya.
         let LEADS = [{ id: 'utama', nama: 'Lead Utama', warna: '#a5a8ff' }];
+        let LEADS_ARSIP = [];   // lead yang sudah dihapus; dipakai untuk membaca nama/foto di riwayat lama
         let currentLeadId = 'utama';
         try { currentLeadId = localStorage.getItem(LEAD_KEY) || 'utama'; } catch (e) {}
         function escHtml(s) {
@@ -1851,7 +1852,10 @@
         function getTradeLead(item) { return validLeadId(item && item.lead); }
         function leadInfo(id) {
             const x = String(id === undefined || id === null ? '' : id).trim();
-            if (x) for (let i = 0; i < LEADS.length; i++) if (LEADS[i].id === x) return LEADS[i];
+            if (x) {
+                for (let i = 0; i < LEADS.length; i++) if (LEADS[i].id === x) return LEADS[i];
+                for (let i = 0; i < LEADS_ARSIP.length; i++) if (LEADS_ARSIP[i].id === x) return LEADS_ARSIP[i];
+            }
             if (!x) for (let i = 0; i < LEADS.length; i++) if (LEADS[i].id === 'utama') return LEADS[i];
             return { id: 'utama', nama: 'Lead Utama', warna: '#a5a8ff', foto: '' };
         }
@@ -1871,7 +1875,9 @@
         function applyLeadOptions(data) {
             if (!data || !Array.isArray(data.leads) || !data.leads.length) return;
             LEADS = data.leads.slice();
+            LEADS_ARSIP = Array.isArray(data.leadsArsip) ? data.leadsArsip.slice() : [];
             currentLeadId = validLeadId(currentLeadId);
+            try { localStorage.setItem(LEAD_KEY, currentLeadId); } catch (e) {}
             const opts = LEADS.map(l => `<option value="${escHtml(l.id)}">${escHtml(l.nama)}</option>`).join('');
             const form = document.getElementById('lead');
             if (form) { form.innerHTML = opts; form.value = currentLeadId; }
@@ -1885,8 +1891,9 @@
             const flt = document.getElementById('fltLead');
             if (flt) {
                 const prev = flt.value;
-                flt.innerHTML = '<option value="">Semua lead</option>' + opts;
-                flt.value = LEADS.some(l => l.id === prev) ? prev : '';
+                const arsipOpts = LEADS_ARSIP.map(l => `<option value="${escHtml(l.id)}">${escHtml(l.nama)} (dihapus)</option>`).join('');
+                flt.innerHTML = '<option value="">Semua lead</option>' + opts + arsipOpts;
+                flt.value = LEADS.concat(LEADS_ARSIP).some(l => l.id === prev) ? prev : '';
             }
             syncLeadAvatars();
             renderLeadPickPops();
@@ -1896,7 +1903,7 @@
         // Pilih lead: foto + nama nempel di tombol dan di tiap baris daftar, seperti badge riwayat.
         // <select> aslinya disembunyikan, tapi tetap jadi source of truth (form/edit/impor baca .value).
         const LEAD_PICKERS = [
-            { sel: 'lead', btn: 'leadBtn', body: 'leadBtnBody', pop: 'leadPop', size: 20 },
+            { sel: 'lead', btn: 'leadBtn', body: 'leadBtnBody', pop: 'leadPop', size: 20, hapus: true },
             { sel: 'editLead', btn: 'editLeadBtn', body: 'editLeadBtnBody', pop: 'editLeadPop', size: 18 },
             { sel: 'impLead', btn: 'impLeadBtn', body: 'impLeadBtnBody', pop: 'impLeadPop', size: 16, prefix: 'Lead: ' }
         ];
@@ -1919,25 +1926,70 @@
             }
         }
         // Daftar lead di popup: avatar + nama per baris. Klik baris = pilih lead.
+        // Di popup form saja ada tombol "Hapus" (edit/impor sengaja tidak, supaya tidak terpicu saat mengedit trade).
         function renderLeadPickPop(cfg) {
             const pop = document.getElementById(cfg.pop); if (!pop) return;
             pop.innerHTML = LEADS.map(l =>
-                `<button type="button" data-lead="${escHtml(l.id)}" class="w-full flex items-center gap-2 px-2 py-1.5 text-[11px] text-left text-slate-200 hover:bg-[var(--surface-2)] rounded-lg">`
+                `<div class="w-full flex items-center rounded-lg hover:bg-[var(--surface-2)]">`
+                + `<button type="button" data-lead="${escHtml(l.id)}" class="flex-1 min-w-0 flex items-center gap-2 px-2 py-1.5 text-[11px] text-left text-slate-200">`
                 + leadAvatarHtml(l.id, cfg.size, l)
                 + `<span class="truncate">${escHtml(l.nama)}</span></button>`
+                + (cfg.hapus && l.id !== 'utama'
+                    ? `<button type="button" data-hapus="${escHtml(l.id)}" class="shrink-0 px-2 py-1.5 text-[10px] font-semibold text-rose-400 hover:text-rose-300" title="Hapus lead ${escHtml(l.nama)}">Hapus</button>`
+                    : '')
+                + `</div>`
             ).join('');
-            pop.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+            pop.querySelectorAll('[data-lead]').forEach(b => b.addEventListener('click', () => {
                 const sel = document.getElementById(cfg.sel);
                 if (sel) { sel.value = b.dataset.lead; sel.dispatchEvent(new Event('change', { bubbles: true })); }
                 pop.classList.add('hidden');
                 syncLeadAvatars();
             }));
+            if (cfg.hapus) pop.querySelectorAll('[data-hapus]').forEach(b => b.addEventListener('click', (ev) => {
+                ev.stopPropagation();
+                pop.classList.add('hidden');
+                hapusLeadUI(b.dataset.hapus);
+            }));
         }
         function renderLeadPickPops() { LEAD_PICKERS.forEach(renderLeadPickPop); }
+
+        // Hapus lead = diminta konfirmasi dulu. Backend hanya menonaktifkan barisnya,
+        // jadi riwayat trade lama tetap punya nama + foto lead yang sama.
+        function hapusLeadUI(id) {
+            const info = leadInfo(id);
+            showDialog({
+                title: 'Hapus lead?',
+                desc: 'Lead "' + info.nama + '" akan dikeluarkan dari daftar pilihan. Riwayat trade yang sudah memakai lead ini tetap tersimpan beserta nama & fotonya, dan masih bisa difilter.',
+                okText: 'Hapus lead', cancelText: 'Batal', danger: true,
+                onConfirm: async (v, api) => {
+                    try {
+                        const payload = { action: 'deleteLead', id: id, rid: newRid() };
+                        if (SESSION && SESSION.token) payload.token = SESSION.token;
+                        const j = await acctPost(payload);
+                        if (ACCOUNT_MODE && j && j.error === 'auth') { checkAuthError(j); return false; }
+                        if (!j || j.status !== 'success') { api.setError((j && j.msg) || 'Gagal menghapus lead'); return false; }
+                        if (cachedGlobalResponse && typeof cachedGlobalResponse === 'object') {
+                            cachedGlobalResponse.leads = j.leads;
+                            cachedGlobalResponse.leadsArsip = j.arsip || [];
+                            try { localStorage.setItem(CACHE_KEY, JSON.stringify(cachedGlobalResponse)); } catch (e) {}
+                        }
+                        applyLeadOptions({ leads: j.leads, leadsArsip: j.arsip || [] });
+                        rememberLead(currentLeadId);
+                        api.close();
+                        showToast('Lead "' + info.nama + '" dihapus', 'success');
+                        return true;
+                    } catch (e) {
+                        api.setError('Gagal menghubungi Sheet: ' + (e && e.message ? e.message : 'coba lagi'));
+                        return false;
+                    }
+                }
+            });
+        }
         // Popup filter riwayat: daftar lead lengkap dengan foto (select native tidak bisa menampilkan gambar).
         function renderFltLeadPop() {
             const pop = document.getElementById('fltLeadPop'); if (!pop) return;
-            const all = [{ id: '', nama: 'Semua lead', warna: '#94a3b8', foto: '' }].concat(LEADS);
+            const all = [{ id: '', nama: 'Semua lead', warna: '#94a3b8', foto: '' }].concat(LEADS)
+                .concat(LEADS_ARSIP.map(l => Object.assign({}, l, { nama: l.nama + ' (dihapus)' })));
             pop.innerHTML = all.map(l =>
                 `<button type="button" data-lead="${escHtml(l.id)}" class="w-full flex items-center gap-1.5 px-2 py-1.5 text-[11px] text-left text-slate-200 hover:bg-[var(--surface-2)] rounded-lg">`
                 + leadAvatarHtml(l.id, 18, l)
