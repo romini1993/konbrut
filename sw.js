@@ -1,6 +1,6 @@
 // Naikkan versi ini SETIAP kali kamu deploy perubahan (v2, v3, v4, ...)
 // Ini yang memaksa browser membuang cache lama dan ambil aset baru.
-const CACHE_VERSION = 'trade-app-v5-addlead';
+const CACHE_VERSION = 'trade-app-v6-casecensitive';
 const STATIC_ASSETS = ['./', './index.html', './manifest.json'];
 
 // Library dari CDN yang dipakai aplikasi (Tailwind, flatpickr, SweetAlert, font).

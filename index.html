@@ -1817,8 +1817,9 @@
         function escHtml(s) {
             return String(s === undefined || s === null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
         }
+        // Id lead case-sensitive: "my-DreAM" dan "My-Dream" adalah dua lead berbeda.
         function validLeadId(id) {
-            const x = String(id === undefined || id === null ? '' : id).trim().toLowerCase();
+            const x = String(id === undefined || id === null ? '' : id).trim();
             if (!x) {
                 for (let i = 0; i < LEADS.length; i++) if (LEADS[i].id === 'utama') return 'utama';
                 return LEADS.length ? LEADS[0].id : 'utama';
@@ -1832,7 +1833,7 @@
         }
         function getTradeLead(item) { return validLeadId(item && item.lead); }
         function leadInfo(id) {
-            const x = String(id === undefined || id === null ? '' : id).trim().toLowerCase();
+            const x = String(id === undefined || id === null ? '' : id).trim();
             if (x) for (let i = 0; i < LEADS.length; i++) if (LEADS[i].id === x) return LEADS[i];
             if (!x) for (let i = 0; i < LEADS.length; i++) if (LEADS[i].id === 'utama') return LEADS[i];
             return { id: 'utama', nama: 'Lead Utama', warna: '#a5a8ff' };
