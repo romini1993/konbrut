@@ -2058,9 +2058,9 @@
             const extra = document.createElement('div');
             extra.className = 'mt-1';
             extra.innerHTML = `
-                <div class="flex items-center gap-2">
-                    <button type="button" id="leadFetchBtn" class="px-2 py-1.5 rounded-lg bg-[var(--surface-2)] border border-[var(--border)] text-[11px] font-semibold text-amber-400">Ambil nama & foto dari link</button>
-                    <span id="leadFetchStatus" class="text-[10px] text-[var(--text-faint)] truncate"></span>
+                <div class="flex items-start gap-2">
+                    <button type="button" id="leadFetchBtn" class="shrink-0 px-2 py-1.5 rounded-lg bg-[var(--surface-2)] border border-[var(--border)] text-[11px] font-semibold text-amber-400">Ambil nama & foto dari link</button>
+                    <span id="leadFetchStatus" class="flex-1 min-w-0 text-[10px] text-[var(--text-faint)] leading-snug break-words whitespace-normal"></span>
                 </div>
                 <div class="text-[10px] font-semibold text-[var(--text-faint)] mt-2.5">Pilih warna lead</div>
                 <div id="leadPalette" class="flex flex-wrap gap-1.5 mt-1.5">
