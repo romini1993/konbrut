@@ -1202,8 +1202,9 @@
             <form id="tradeForm" onsubmit="handleSubmit(event)" class="porto-card p-3.5 rounded-2xl space-y-3.5 lg:shrink-0">
                 <div class="field">
                     <span class="field-label">Lead yang diikuti</span>
-                    <div class="flex gap-1.5">
+                    <div class="flex gap-1.5 items-center">
                         <select id="lead" class="flex-1 min-w-0 porto-input rounded-xl px-3.5 text-sm"><option value="utama">Lead Utama</option></select>
+                        <span id="leadAvatarPreview" class="shrink-0 inline-flex items-center" title="Foto lead yang dipilih"></span>
                         <button type="button" id="addLeadBtn" onclick="openAddLeadDialog()" class="shrink-0 w-11 rounded-xl porto-input text-amber-400 text-lg font-bold flex items-center justify-center active:scale-95 transition" title="Tambah lead baru" aria-label="Tambah lead baru">+</button>
                     </div>
                 </div>
@@ -1381,7 +1382,9 @@
                             <button type="button" id="fltReset" class="hidden shrink-0 px-1.5 rounded-lg text-[10px] font-semibold text-amber-400 whitespace-nowrap" style="height:30px"></button>
                         </div>
                         <div class="flex items-center gap-2 mt-1.5">
-                            <select id="fltLead" class="porto-input rounded-lg px-1 text-[11px]" style="height:26px;width:82px"><option value="">Semua lead</option></select>
+                            <button type="button" id="fltLeadBtn" class="porto-input rounded-lg px-1.5 text-[11px] inline-flex items-center gap-1 max-w-[130px]" style="height:26px" aria-label="Filter lead"><span id="fltLeadBtnBody" class="truncate">Semua lead</span></button>
+                            <select id="fltLead" class="hidden"><option value="">Semua lead</option></select>
+                            <div id="fltLeadPop" class="hidden absolute left-0 top-full mt-1 z-50 w-44 max-h-56 overflow-y-auto custom-scroll porto-card rounded-xl p-1 shadow-xl"></div>
                             <span class="text-[10px] text-[var(--text-faint)]">Urutkan</span>
                             <div id="fltSort" class="inline-flex rounded-lg p-0.5 bg-[var(--surface-2)]">
                                 <button type="button" data-sort="closed">Closed</button>
@@ -1483,7 +1486,10 @@
             <h3 class="font-display font-bold text-white text-base">Edit Trade #<span id="editNoLabel"></span></h3>
             <div>
                 <label class="block text-xs font-medium text-[var(--text-dim)] mb-1.5">Lead yang diikuti</label>
-                <select id="editLead" class="w-full porto-input rounded-xl px-3.5 py-2.5 font-medium"><option value="utama">Lead Utama</option></select>
+                <div class="flex items-center gap-2">
+                    <select id="editLead" class="flex-1 min-w-0 porto-input rounded-xl px-3.5 py-2.5 font-medium"><option value="utama">Lead Utama</option></select>
+                    <span id="editLeadAvatarPreview" class="shrink-0 inline-flex items-center" title="Foto lead"></span>
+                </div>
             </div>
             <div>
                 <label class="block text-xs font-medium text-[var(--text-dim)] mb-1.5">Pair / Koin</label>
@@ -1830,16 +1836,27 @@
         function rememberLead(id) {
             currentLeadId = validLeadId(id);
             try { localStorage.setItem(LEAD_KEY, currentLeadId); } catch (e) {}
+            syncLeadAvatars();
         }
         function getTradeLead(item) { return validLeadId(item && item.lead); }
         function leadInfo(id) {
             const x = String(id === undefined || id === null ? '' : id).trim();
             if (x) for (let i = 0; i < LEADS.length; i++) if (LEADS[i].id === x) return LEADS[i];
             if (!x) for (let i = 0; i < LEADS.length; i++) if (LEADS[i].id === 'utama') return LEADS[i];
-            return { id: 'utama', nama: 'Lead Utama', warna: '#a5a8ff' };
+            return { id: 'utama', nama: 'Lead Utama', warna: '#a5a8ff', foto: '' };
         }
         function leadLabel(id) { return leadInfo(id).nama; }
         function leadColor(id) { return leadInfo(id).warna || '#a5a8ff'; }
+        // Avatar lead: foto kalau ada, kalau tidak inisial dengan warna lead. Aman untuk nama China/Korea/Jepang.
+        function leadAvatarHtml(id, size, override) {
+            const info = override ? Object.assign({ id: '', nama: '', warna: '#94a3b8', foto: '' }, override) : leadInfo(id);
+            const px = Math.max(14, Math.round(size || 20));
+            const clr = /^#[0-9a-fA-F]{6}$/.test(info.warna) ? info.warna : '#a5a8ff';
+            const initial = Array.from(String(info.nama || info.id || '?'))[0] || '?';
+            const base = `width:${px}px;height:${px}px;border-radius:9999px;display:inline-flex;align-items:center;justify-content:center;flex:none;overflow:hidden;border:1px solid ${clr};font-size:${Math.max(9, Math.round(px * 0.48))}px;font-weight:800;line-height:1`;
+            if (info.foto) return `<img src="${escHtml(info.foto)}" alt="" draggable="false" style="${base};object-fit:cover">`;
+            return `<span style="${base};background:${clr}22;color:${clr}">${escHtml(initial)}</span>`;
+        }
         // Isi semua dropdown lead (form, edit, filter riwayat, impor) dari master di Sheet.
         function applyLeadOptions(data) {
             if (!data || !Array.isArray(data.leads) || !data.leads.length) return;
@@ -1861,7 +1878,54 @@
                 flt.innerHTML = '<option value="">Semua lead</option>' + opts;
                 flt.value = LEADS.some(l => l.id === prev) ? prev : '';
             }
+            syncLeadAvatars();
+            renderFltLeadPop();
         }
+
+        // Tampilkan avatar lead di form input, modal edit, impor, dan tombol filter riwayat.
+        function syncLeadAvatars() {
+            const put = (boxId, selId, size) => {
+                const box = document.getElementById(boxId); if (!box) return;
+                const sel = document.getElementById(selId);
+                box.innerHTML = leadAvatarHtml(sel ? sel.value : currentLeadId, size);
+            };
+            put('leadAvatarPreview', 'lead', 30);
+            put('editLeadAvatarPreview', 'editLead', 22);
+            put('impLeadAvatarPreview', 'impLead', 18);
+            const btnBody = document.getElementById('fltLeadBtnBody');
+            if (btnBody) {
+                const fsel = document.getElementById('fltLead');
+                const v = fsel ? fsel.value : '';
+                btnBody.innerHTML = v
+                    ? leadAvatarHtml(v, 16) + '<span class="truncate">' + escHtml(leadLabel(v)) + '</span>'
+                    : 'Semua lead';
+            }
+        }
+        // Popup filter lead: daftar lead lengkap dengan foto (select native tidak bisa menampilkan gambar).
+        function renderFltLeadPop() {
+            const pop = document.getElementById('fltLeadPop'); if (!pop) return;
+            const all = [{ id: '', nama: 'Semua lead', warna: '#94a3b8', foto: '' }].concat(LEADS);
+            pop.innerHTML = all.map(l =>
+                `<button type="button" data-lead="${escHtml(l.id)}" class="w-full flex items-center gap-1.5 px-2 py-1.5 text-[11px] text-left text-slate-200 hover:bg-[var(--surface-2)] rounded-lg">`
+                + leadAvatarHtml(l.id, 18, l)
+                + `<span class="truncate">${escHtml(l.nama)}</span></button>`
+            ).join('');
+            pop.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+                const sel = document.getElementById('fltLead');
+                if (sel) { sel.value = b.dataset.lead; sel.dispatchEvent(new Event('change', { bubbles: true })); }
+                pop.classList.add('hidden');
+                syncLeadAvatars();
+            }));
+        }
+        document.addEventListener('change', (e) => {
+            if (e.target && ['lead', 'editLead', 'impLead', 'fltLead'].indexOf(e.target.id) >= 0) syncLeadAvatars();
+        });
+        document.addEventListener('click', (e) => {
+            const btn = document.getElementById('fltLeadBtn'), pop = document.getElementById('fltLeadPop');
+            if (!btn || !pop) return;
+            if (btn.contains(e.target)) { renderFltLeadPop(); pop.classList.toggle('hidden'); return; }
+            if (!pop.contains(e.target)) pop.classList.add('hidden');
+        });
 
         // Tambah lead baru langsung dari aplikasi (tombol "+" di samping dropdown lead).
         // Master lead tetap disimpan di Sheet (tab "Lead"), supaya semua akun melihat daftar yang sama.
@@ -1869,6 +1933,7 @@
                               '#f472b6', '#facc15', '#4ade80', '#fb923c', '#22d3ee', '#e879f9'];
         function openAddLeadDialog() {
             let picked = LEAD_PALETTE[0];
+            let leadFoto = '';
             const extra = document.createElement('div');
             extra.className = 'mt-1';
             extra.innerHTML = `
@@ -1879,10 +1944,16 @@
                 <div class="flex items-center gap-2 mt-2">
                     <input type="color" id="leadCustomColor" value="${picked}" class="w-9 h-9 rounded-lg bg-transparent border border-[var(--border)] p-0 cursor-pointer" aria-label="Pilih warna lain">
                     <span class="text-[10px] text-[var(--text-faint)]">Atau pilih warna bebas</span>
+                </div>
+                <div class="text-[10px] font-semibold text-[var(--text-faint)] mt-2.5">Foto profil lead (opsional)</div>
+                <div class="flex items-center gap-2 mt-1.5">
+                    <span id="leadFotoPreview" class="inline-flex items-center"></span>
+                    <button type="button" id="leadFotoBtn" class="px-2 py-1.5 rounded-lg bg-[var(--surface-2)] border border-[var(--border)] text-[11px] font-semibold text-slate-200">Pilih foto</button>
+                    <button type="button" id="leadFotoClear" class="text-[11px] font-semibold text-rose-400 hidden">Hapus</button>
                 </div>`;
             const dlg = showDialog({
                 title: 'Tambah lead baru',
-                desc: 'Lead = trader Binance yang kamu ikuti. Daftar lead dipakai bersama semua akun di Sheet ini.',
+                desc: 'Lead = trader Binance yang kamu ikuti. Foto membantu mengenali lead yang namanya non-abjad. Daftar lead dipakai bersama semua akun di Sheet ini.',
                 fields: [
                     { id: 'nama', label: 'Nama lead', placeholder: 'Contoh: Lead Alpha', max: 30 },
                     { id: 'warna', label: 'Warna (hex)', value: picked, placeholder: '#a5a8ff', max: 7 }
@@ -1896,10 +1967,11 @@
                     if (!/^#[0-9a-fA-F]{6}$/.test(warna)) { api.setError('Warna harus format #RRGGBB'); return false; }
                     let j = {};
                     try {
-                        const r = await watchAuth(fetch(apiUrl(`action=addLead&nama=${encodeURIComponent(nama)}&warna=${encodeURIComponent(warna)}&rid=${newRid()}`), { cache: 'no-store' }));
-                        j = await r.json().catch(() => ({}));
+                        const payload = { action: 'addLead', nama: nama, warna: warna, foto: leadFoto, rid: newRid() };
+                        if (SESSION && SESSION.token) payload.token = SESSION.token;
+                        j = await acctPost(payload);
                     } catch (e) { api.setError('Gagal menghubungi Sheet'); return false; }
-                    if (j && j.error === 'auth') { checkAuthError(j); return false; }
+                    if (ACCOUNT_MODE && j && j.error === 'auth') { checkAuthError(j); return false; }
                     if (!j || j.status !== 'success') { api.setError((j && j.msg) || 'Gagal menambah lead'); return false; }
 
                     const newId = j.id || validLeadId('');
@@ -1911,6 +1983,7 @@
                     }
                     const sel = document.getElementById('lead');
                     if (sel) sel.value = newId;
+                    syncLeadAvatars();
                     api.close();
                     showToast('Lead "' + nama + '" ditambahkan', 'success');
                     return true;
@@ -1919,15 +1992,40 @@
             const pal = dlg.card.querySelector('#leadPalette');
             const colorInput = dlg.card.querySelector('#leadCustomColor');
             const warnaInput = dlg.inputs.warna;
+            const fotoPreview = dlg.card.querySelector('#leadFotoPreview');
+            const fotoClear = dlg.card.querySelector('#leadFotoClear');
+            const paintFoto = () => {
+                if (fotoPreview) fotoPreview.innerHTML = leadAvatarHtml('', 34, { id: '', nama: '?', warna: picked, foto: leadFoto });
+                if (fotoClear) fotoClear.classList.toggle('hidden', !leadFoto);
+            };
             const paint = () => {
                 if (pal) pal.querySelectorAll('button').forEach(b => {
                     b.style.borderColor = b.dataset.c.toLowerCase() === picked.toLowerCase() ? '#ffffff' : 'transparent';
                 });
                 if (colorInput) colorInput.value = picked;
                 if (warnaInput) warnaInput.value = picked;
+                paintFoto();
             };
             if (pal) pal.querySelectorAll('button').forEach(b => b.addEventListener('click', () => { picked = b.dataset.c; paint(); }));
             if (colorInput) colorInput.addEventListener('input', () => { picked = colorInput.value; paint(); });
+            const fotoBtn = dlg.card.querySelector('#leadFotoBtn');
+            if (fotoBtn) fotoBtn.addEventListener('click', () => {
+                const inp = document.createElement('input');
+                inp.type = 'file'; inp.accept = 'image/*'; inp.style.display = 'none';
+                inp.addEventListener('change', async () => {
+                    const f = inp.files && inp.files[0];
+                    inp.remove();
+                    if (!f) return;
+                    try {
+                        const cropped = await openCropper(f);
+                        if (!cropped) return;
+                        leadFoto = cropped;
+                        paintFoto();
+                    } catch (e) { showToast('Foto tidak bisa dipakai, coba gambar lain', 'error'); }
+                });
+                document.body.appendChild(inp); inp.click();
+            });
+            if (fotoClear) fotoClear.addEventListener('click', () => { leadFoto = ''; paintFoto(); });
             paint();
         }
 
@@ -3402,6 +3500,7 @@
             document.getElementById('editNoLabel').innerText = item.no;
             const editLeadEl = document.getElementById('editLead');
             if (editLeadEl) editLeadEl.value = getTradeLead(item);
+            syncLeadAvatars();
             document.getElementById('editPair').value = item.pair;
             document.getElementById('editPnl').value = item.pnl;
             updateEditPnlPreview();
@@ -3551,8 +3650,9 @@
             const sideLetter = sideName === 'Sell' ? 'S' : 'B';
             const sideBg = sideName === 'Sell' ? '#F6465D' : '#2EBD85';
             const leadNm = leadLabel(item.lead);
-            const leadClr = leadColor(item.lead);
-            const leadBadge = `<span class="ml-1 inline-block max-w-[74px] truncate rounded px-1 text-[8px] font-bold normal-case align-middle" style="color:${leadClr};background:${leadClr}22;border:1px solid ${leadClr}55" title="Lead: ${escHtml(leadNm)}">${escHtml(leadNm)}</span>`;
+            const rawLeadClr = leadColor(item.lead);
+            const leadClr = /^#[0-9a-fA-F]{6}$/.test(rawLeadClr) ? rawLeadClr : '#a5a8ff';
+            const leadBadge = `<span class="ml-1 inline-flex items-center gap-1 max-w-[104px] rounded px-1 text-[8px] font-bold normal-case align-middle" style="color:${leadClr};background:${leadClr}22;border:1px solid ${leadClr}55" title="Lead: ${escHtml(leadNm)}">${leadAvatarHtml(item.lead, 14)}<span class="truncate">${escHtml(leadNm)}</span></span>`;
 
             const shouldAnimate = forceAnimate || animateRows;
             // saat diurutkan menurut Opened, baris menampilkan tanggal Opened (diberi awalan "O:") supaya urutannya terlihat jelas
@@ -5599,7 +5699,10 @@
                 <select id="impSide" class="porto-input rounded-lg px-1 text-[11px]" style="height:32px"><option value="Buy">Buy</option><option value="Sell">Sell</option></select>
                 <input id="impPnl" type="text" placeholder="PNL" autocomplete="off" class="porto-input rounded-lg px-2 text-[11px] min-w-0" style="height:32px">
             </div>
-            <select id="impLead" class="porto-input rounded-lg px-2 text-[11px] w-full" style="height:30px"><option value="utama">Lead: Lead Utama</option></select>
+            <div class="flex items-center gap-2">
+                <select id="impLead" class="porto-input rounded-lg px-2 text-[11px] flex-1 min-w-0" style="height:30px"><option value="utama">Lead: Lead Utama</option></select>
+                <span id="impLeadAvatarPreview" class="shrink-0 inline-flex items-center" title="Foto lead tujuan"></span>
+            </div>
             <button type="button" id="impAdd" class="w-full px-3 py-2 rounded-xl bg-[var(--surface-2)] border border-[var(--border)] text-xs font-semibold text-amber-400">+ Tambah ke daftar</button>
             <textarea id="impText" rows="4" class="w-full porto-input rounded-xl p-2.5 text-xs num" placeholder="Tempel di sini: salinan riwayat Binance (Open Long, Close Short, dst.) atau baris Opened, Closed, Pair, Buy/Sell, PNL"></textarea>
             <label class="flex items-center gap-1.5 text-[10px] text-[var(--text-faint)]"><input id="impFee" type="checkbox"> Riwayat Binance: kurangi fee dari PNL (kalau dimatikan, PNL = Realized Profit)</label>
@@ -5766,7 +5869,7 @@
         [['fltQ', 'q', v => v.trim().toUpperCase()], ['fltLead', 'lead', v => v], ['fltSide', 'side', v => v], ['fltRes', 'res', v => v], ['fltFrom', 'from', v => v], ['fltTo', 'to', v => v]]
             .forEach(([id, key, fn]) => { const e = $(id); const h = () => { F[key] = fn(e.value); apply(); }; e.addEventListener('input', h); e.addEventListener('change', h); });
         const clearDates = () => { ['fltFrom', 'fltTo'].forEach(id => { $(id).value = ''; }); F.from = ''; F.to = ''; apply(); };
-        $('fltReset').onclick = () => { ['fltQ', 'fltLead', 'fltSide', 'fltRes', 'fltFrom', 'fltTo'].forEach(id => { $(id).value = ''; }); Object.keys(F).forEach(k => { F[k] = ''; }); $('fltDatePop').classList.add('hidden'); apply(); };
+        $('fltReset').onclick = () => { ['fltQ', 'fltLead', 'fltSide', 'fltRes', 'fltFrom', 'fltTo'].forEach(id => { $(id).value = ''; }); Object.keys(F).forEach(k => { F[k] = ''; }); $('fltDatePop').classList.add('hidden'); syncLeadAvatars(); apply(); };
         $('fltDateClear').onclick = clearDates;
         $('fltDateBtn').onclick = e => { e.stopPropagation(); $('fltDatePop').classList.toggle('hidden'); };
         document.addEventListener('click', e => { const pop = $('fltDatePop'); if (!pop.classList.contains('hidden') && !pop.contains(e.target)) pop.classList.add('hidden'); });
