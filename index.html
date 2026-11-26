@@ -6005,8 +6005,20 @@
         const rows = [], ok = [], errs = [], bf = []; let dup = 0;
         // Duplikat dicek hanya di lead tujuan: trade yang sama di lead lain bukan duplikat.
         const lid = (opt && opt.lead) ? validLeadId(opt.lead) : 'utama';
-        const seen = new Set(existing.filter(t => getTradeLead(t) === lid)
-            .map(t => `${t.closed}|${String(t.pair).toUpperCase()}|${_p(t).toFixed(4)}|${getTradeSide(t)}|${lid}`));
+        // Anti-duplikat: yang dibandingkan ke Sheet adalah JUMLAH kemunculan, bukan keberadaan.
+        // Trade scalping sering punya tanggal/pair/side/PNL identik (0.01, 0.03, ... berulang)
+        // tapi tetap transaksi berbeda. Baris identik DALAM satu tempelan jadi tidak boleh dianggap dup.
+        const have = new Map();
+        existing.filter(t => getTradeLead(t) === lid).forEach(t => {
+            const k = `${t.closed}|${String(t.pair).toUpperCase()}|${_p(t).toFixed(4)}|${getTradeSide(t)}|${lid}`;
+            have.set(k, (have.get(k) || 0) + 1);
+        });
+        const used = new Map();
+        const isDup = key => {
+            const n = used.get(key) || 0;
+            if (n < (have.get(key) || 0)) { used.set(key, n + 1); return true; }
+            return false;
+        };
         // Salinan Binance biasanya descending (yang terbaru paling atas). Simpan timestamp penuh
         // (tanggal + jam) di _ts, lalu urutkan ascending di akhir supaya kronologis: pagi dulu, malam belakangan.
         const tsOf = r => r && r.d ? r.d._ts : (r && r._ts);
@@ -6035,8 +6047,8 @@
             const d = { opened: o, closed: cl, pair, side: sd, pnl, _ts: cl, _i: i };   // _ts = timestamp untuk sorting akhir
             const [y, m, dd] = cl.split('-');
             const key = `${dd}/${m}/${y}|${pair}|${pnl.toFixed(4)}|${sd}|${lid}`;
-            if (seen.has(key)) { dup++; rows.push({ st: 'dup', d }); return; }
-            seen.add(key); ok.push(d); rows.push({ st: 'ok', d });
+            if (isDup(key)) { dup++; rows.push({ st: 'dup', d }); return; }
+            ok.push(d); rows.push({ st: 'ok', d });
         });
         let openPos = 0;
         if (bf.length) {
@@ -6045,8 +6057,8 @@
                 const d = { opened: t.o.slice(0, 10), closed: t.c.slice(0, 10), pair: t.sym, side: t.long ? 'Buy' : 'Sell', pnl: impRnd(t.pnl, 4),
                             _ts: t.c, _i: 100000 + idx };   // t.c masih lengkap dengan jam, bukan cuma tanggal
                 const [y, m, dd] = d.closed.split('-'); const key = `${dd}/${m}/${y}|${d.pair}|${d.pnl.toFixed(4)}|${d.side}|${lid}`;
-                if (seen.has(key)) { dup++; rows.push({ st: 'dup', d }); return; }
-                seen.add(key); ok.push(d); rows.push({ st: 'ok', d });
+                if (isDup(key)) { dup++; rows.push({ st: 'dup', d }); return; }
+                ok.push(d); rows.push({ st: 'ok', d });
             });
         }
         // Urutkan ascending berdasarkan timestamp Ditutup yang lengkap (tanggal + jam).
