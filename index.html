@@ -1985,9 +1985,15 @@
                 extra,
                 okText: 'Tambah lead',
                 onConfirm: async (vals, api) => {
-                    const nama = String(vals.nama || '').trim();
+                    let nama = String(vals.nama || '').trim();
                     const warna = String(vals.warna || '').trim();
-                    if (!nama) { api.setError('Nama lead wajib diisi'); return false; }
+                    const link = String(vals.link || '').trim();
+                    // Kalau user cuma tempel link lalu langsung tekan Tambah, ambil datanya dulu.
+                    if (!nama && BINANCE_LEAD_URL.test(link)) {
+                        await fetchFromLink(false);
+                        nama = String(dlg.inputs.nama.value || '').trim();
+                    }
+                    if (!nama) { api.setError('Nama lead wajib diisi, atau tempel link lead Binance'); return false; }
                     if (!/^#[0-9a-fA-F]{6}$/.test(warna)) { api.setError('Warna harus format #RRGGBB'); return false; }
                     let j = {};
                     try {
@@ -2036,26 +2042,33 @@
             // Ambil nama + foto dari halaman lead Binance lewat Apps Script (server-side, bebas CORS).
             const fetchBtn = dlg.card.querySelector('#leadFetchBtn');
             const fetchStatus = dlg.card.querySelector('#leadFetchStatus');
-            if (fetchBtn) fetchBtn.addEventListener('click', async () => {
+            let fetching = false;
+            async function fetchFromLink(showLinkError) {
+                if (fetching) return false;
                 const link = String(dlg.inputs.link.value || '').trim();
                 if (!BINANCE_LEAD_URL.test(link)) {
+                    const msg = 'Tempel link lead-details Binance yang valid.';
                     if (fetchStatus) fetchStatus.textContent = 'Link tidak dikenal';
-                    dlg.setError('Tempel link lead-details Binance yang valid.');
-                    return;
+                    if (showLinkError) dlg.setError(msg);
+                    return false;
                 }
+                fetching = true;
                 dlg.setError('');
-                const oldText = fetchBtn.textContent;
-                fetchBtn.disabled = true; fetchBtn.textContent = 'Mengambil…';
+                if (fetchBtn) {
+                    fetchBtn.dataset.label = fetchBtn.dataset.label || fetchBtn.textContent;
+                    fetchBtn.disabled = true; fetchBtn.textContent = 'Mengambil…';
+                }
                 if (fetchStatus) fetchStatus.textContent = 'Mengambil…';
                 try {
                     const payload = { action: 'previewLead', url: link };
                     if (SESSION && SESSION.token) payload.token = SESSION.token;
                     const r = await acctPost(payload);
-                    if (ACCOUNT_MODE && r && r.error === 'auth') { checkAuthError(r); return; }
+                    if (ACCOUNT_MODE && r && r.error === 'auth') { checkAuthError(r); return false; }
                     if (!r || r.status !== 'success') {
-                        if (fetchStatus) fetchStatus.textContent = '';
-                        dlg.setError((r && r.msg) || 'Gagal mengambil data lead');
-                        return;
+                        const msg = (r && r.msg) || 'Gagal mengambil data lead';
+                        if (fetchStatus) fetchStatus.textContent = msg;
+                        dlg.setError(msg);
+                        return false;
                     }
                     if (r.nama) dlg.inputs.nama.value = r.nama;
                     leadUid = r.uid || '';
@@ -2072,13 +2085,29 @@
                         if (fetchStatus) fetchStatus.textContent = r.msg || 'Nama terisi, foto belum ada';
                     }
                     paintFoto();
+                    return true;
                 } catch (e) {
-                    if (fetchStatus) fetchStatus.textContent = '';
-                    dlg.setError('Gagal menghubungi Sheet: ' + (e && e.message ? e.message : 'coba lagi'));
+                    const msg = 'Gagal menghubungi Sheet: ' + (e && e.message ? e.message : 'coba lagi');
+                    if (fetchStatus) fetchStatus.textContent = msg;
+                    dlg.setError(msg);
+                    return false;
                 } finally {
-                    fetchBtn.disabled = false; fetchBtn.textContent = oldText;
+                    fetching = false;
+                    if (fetchBtn) { fetchBtn.disabled = false; fetchBtn.textContent = fetchBtn.dataset.label || 'Ambil nama & foto dari link'; }
                 }
-            });
+            }
+            if (fetchBtn) fetchBtn.addEventListener('click', () => fetchFromLink(true));
+            // Otomatis ambil saat link selesai ditempel / diketik, jadi tidak perlu klik tombol.
+            let fetchTimer = null;
+            const scheduleFetch = () => {
+                clearTimeout(fetchTimer);
+                const link = String(dlg.inputs.link.value || '').trim();
+                if (!BINANCE_LEAD_URL.test(link)) return;
+                fetchTimer = setTimeout(() => fetchFromLink(false), 700);
+            };
+            dlg.inputs.link.addEventListener('input', scheduleFetch);
+            dlg.inputs.link.addEventListener('paste', () => setTimeout(scheduleFetch, 0));
+            dlg.inputs.link.addEventListener('change', scheduleFetch);
             const fotoBtn = dlg.card.querySelector('#leadFotoBtn');
             if (fotoBtn) fotoBtn.addEventListener('click', () => {
                 const inp = document.createElement('input');
