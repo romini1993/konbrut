@@ -1203,9 +1203,15 @@
                 <div class="field">
                     <span class="field-label">Lead yang diikuti</span>
                     <div class="flex gap-1.5 items-center">
-                        <select id="lead" class="flex-1 min-w-0 porto-input rounded-xl px-3.5 text-sm"><option value="utama">Lead Utama</option></select>
-                        <span id="leadAvatarPreview" class="shrink-0 inline-flex items-center" title="Foto lead yang dipilih"></span>
-                        <button type="button" id="addLeadBtn" onclick="openAddLeadDialog()" class="shrink-0 w-11 rounded-xl porto-input text-amber-400 text-lg font-bold flex items-center justify-center active:scale-95 transition" title="Tambah lead baru" aria-label="Tambah lead baru">+</button>
+                        <div class="relative flex-1 min-w-0">
+                            <button type="button" id="leadBtn" class="w-full porto-input rounded-xl px-3.5 text-sm flex items-center gap-2 text-left active:scale-[.99] transition" title="Pilih lead" aria-label="Pilih lead yang diikuti" aria-haspopup="listbox">
+                                <span id="leadBtnBody" class="flex-1 min-w-0 flex items-center gap-2 overflow-hidden"></span>
+                                <svg class="shrink-0 opacity-60" width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3,4.5 6,7.5 9,4.5"/></svg>
+                            </button>
+                            <select id="lead" class="hidden"><option value="utama">Lead Utama</option></select>
+                            <div id="leadPop" class="hidden absolute left-0 top-full mt-1 z-50 w-full max-h-64 overflow-y-auto custom-scroll porto-card rounded-xl p-1 shadow-xl"></div>
+                        </div>
+                        <button type="button" id="addLeadBtn" onclick="openAddLeadDialog()" class="shrink-0 px-3 rounded-xl porto-input text-amber-400 text-sm font-bold whitespace-nowrap active:scale-95 transition" title="Tambah lead baru" aria-label="Tambah lead baru">Tambah</button>
                     </div>
                 </div>
 
@@ -1486,9 +1492,13 @@
             <h3 class="font-display font-bold text-white text-base">Edit Trade #<span id="editNoLabel"></span></h3>
             <div>
                 <label class="block text-xs font-medium text-[var(--text-dim)] mb-1.5">Lead yang diikuti</label>
-                <div class="flex items-center gap-2">
-                    <select id="editLead" class="flex-1 min-w-0 porto-input rounded-xl px-3.5 py-2.5 font-medium"><option value="utama">Lead Utama</option></select>
-                    <span id="editLeadAvatarPreview" class="shrink-0 inline-flex items-center" title="Foto lead"></span>
+                <div class="relative flex-1 min-w-0">
+                    <button type="button" id="editLeadBtn" class="w-full porto-input rounded-xl px-3.5 py-2.5 font-medium flex items-center gap-2 text-left" title="Pilih lead" aria-label="Pilih lead" aria-haspopup="listbox">
+                        <span id="editLeadBtnBody" class="flex-1 min-w-0 flex items-center gap-2 overflow-hidden"></span>
+                        <svg class="shrink-0 opacity-60" width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3,4.5 6,7.5 9,4.5"/></svg>
+                    </button>
+                    <select id="editLead" class="hidden"><option value="utama">Lead Utama</option></select>
+                    <div id="editLeadPop" class="hidden absolute left-0 top-full mt-1 z-[60] w-full max-h-56 overflow-y-auto custom-scroll porto-card rounded-xl p-1 shadow-xl"></div>
                 </div>
             </div>
             <div>
@@ -1879,19 +1889,26 @@
                 flt.value = LEADS.some(l => l.id === prev) ? prev : '';
             }
             syncLeadAvatars();
+            renderLeadPickPops();
             renderFltLeadPop();
         }
 
-        // Tampilkan avatar lead di form input, modal edit, impor, dan tombol filter riwayat.
+        // Pilih lead: foto + nama nempel di tombol dan di tiap baris daftar, seperti badge riwayat.
+        // <select> aslinya disembunyikan, tapi tetap jadi source of truth (form/edit/impor baca .value).
+        const LEAD_PICKERS = [
+            { sel: 'lead', btn: 'leadBtn', body: 'leadBtnBody', pop: 'leadPop', size: 20 },
+            { sel: 'editLead', btn: 'editLeadBtn', body: 'editLeadBtnBody', pop: 'editLeadPop', size: 18 },
+            { sel: 'impLead', btn: 'impLeadBtn', body: 'impLeadBtnBody', pop: 'impLeadPop', size: 16, prefix: 'Lead: ' }
+        ];
         function syncLeadAvatars() {
-            const put = (boxId, selId, size) => {
-                const box = document.getElementById(boxId); if (!box) return;
-                const sel = document.getElementById(selId);
-                box.innerHTML = leadAvatarHtml(sel ? sel.value : currentLeadId, size);
+            const put = (cfg) => {
+                const box = document.getElementById(cfg.body); if (!box) return;
+                const sel = document.getElementById(cfg.sel);
+                const v = sel ? sel.value : currentLeadId;
+                box.innerHTML = leadAvatarHtml(v, cfg.size)
+                    + '<span class="truncate">' + escHtml((cfg.prefix || '') + leadLabel(v)) + '</span>';
             };
-            put('leadAvatarPreview', 'lead', 30);
-            put('editLeadAvatarPreview', 'editLead', 22);
-            put('impLeadAvatarPreview', 'impLead', 18);
+            LEAD_PICKERS.forEach(put);
             const btnBody = document.getElementById('fltLeadBtnBody');
             if (btnBody) {
                 const fsel = document.getElementById('fltLead');
@@ -1901,7 +1918,23 @@
                     : 'Semua lead';
             }
         }
-        // Popup filter lead: daftar lead lengkap dengan foto (select native tidak bisa menampilkan gambar).
+        // Daftar lead di popup: avatar + nama per baris. Klik baris = pilih lead.
+        function renderLeadPickPop(cfg) {
+            const pop = document.getElementById(cfg.pop); if (!pop) return;
+            pop.innerHTML = LEADS.map(l =>
+                `<button type="button" data-lead="${escHtml(l.id)}" class="w-full flex items-center gap-2 px-2 py-1.5 text-[11px] text-left text-slate-200 hover:bg-[var(--surface-2)] rounded-lg">`
+                + leadAvatarHtml(l.id, cfg.size, l)
+                + `<span class="truncate">${escHtml(l.nama)}</span></button>`
+            ).join('');
+            pop.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+                const sel = document.getElementById(cfg.sel);
+                if (sel) { sel.value = b.dataset.lead; sel.dispatchEvent(new Event('change', { bubbles: true })); }
+                pop.classList.add('hidden');
+                syncLeadAvatars();
+            }));
+        }
+        function renderLeadPickPops() { LEAD_PICKERS.forEach(renderLeadPickPop); }
+        // Popup filter riwayat: daftar lead lengkap dengan foto (select native tidak bisa menampilkan gambar).
         function renderFltLeadPop() {
             const pop = document.getElementById('fltLeadPop'); if (!pop) return;
             const all = [{ id: '', nama: 'Semua lead', warna: '#94a3b8', foto: '' }].concat(LEADS);
@@ -1917,17 +1950,34 @@
                 syncLeadAvatars();
             }));
         }
+        function closeLeadPops(except) {
+            ['fltLeadPop'].concat(LEAD_PICKERS.map(c => c.pop)).forEach(id => {
+                if (id === except) return;
+                const p = document.getElementById(id);
+                if (p) p.classList.add('hidden');
+            });
+        }
         document.addEventListener('change', (e) => {
             if (e.target && ['lead', 'editLead', 'impLead', 'fltLead'].indexOf(e.target.id) >= 0) syncLeadAvatars();
         });
         document.addEventListener('click', (e) => {
-            const btn = document.getElementById('fltLeadBtn'), pop = document.getElementById('fltLeadPop');
-            if (!btn || !pop) return;
-            if (btn.contains(e.target)) { renderFltLeadPop(); pop.classList.toggle('hidden'); return; }
-            if (!pop.contains(e.target)) pop.classList.add('hidden');
+            const toggle = (btnId, popId, onOpen) => {
+                const btn = document.getElementById(btnId), pop = document.getElementById(popId);
+                if (!btn || !pop) return;
+                if (btn.contains(e.target)) {
+                    closeLeadPops(popId);
+                    if (onOpen) onOpen();
+                    pop.classList.toggle('hidden');
+                } else if (!pop.contains(e.target)) pop.classList.add('hidden');
+            };
+            toggle('fltLeadBtn', 'fltLeadPop', renderFltLeadPop);
+            LEAD_PICKERS.forEach(cfg => toggle(cfg.btn, cfg.pop, () => renderLeadPickPop(cfg)));
         });
+        // Tampilan awal sebelum data Sheet datang; nanti diisi ulang oleh applyLeadOptions().
+        syncLeadAvatars();
+        renderLeadPickPops();
 
-        // Tambah lead baru langsung dari aplikasi (tombol "+" di samping dropdown lead).
+        // Tambah lead baru dari aplikasi (tombol "Tambah" di samping pilihan lead).
         // Master lead tetap disimpan di Sheet (tab "Lead"), supaya semua akun melihat daftar yang sama.
         const LEAD_PALETTE = ['#a5a8ff', '#34d399', '#fb7185', '#f59e0b', '#38bdf8', '#c084fc',
                               '#f472b6', '#facc15', '#4ade80', '#fb923c', '#22d3ee', '#e879f9'];
@@ -5799,9 +5849,13 @@
                 <select id="impSide" class="porto-input rounded-lg px-1 text-[11px]" style="height:32px"><option value="Buy">Buy</option><option value="Sell">Sell</option></select>
                 <input id="impPnl" type="text" placeholder="PNL" autocomplete="off" class="porto-input rounded-lg px-2 text-[11px] min-w-0" style="height:32px">
             </div>
-            <div class="flex items-center gap-2">
-                <select id="impLead" class="porto-input rounded-lg px-2 text-[11px] flex-1 min-w-0" style="height:30px"><option value="utama">Lead: Lead Utama</option></select>
-                <span id="impLeadAvatarPreview" class="shrink-0 inline-flex items-center" title="Foto lead tujuan"></span>
+            <div class="relative flex-1 min-w-0">
+                <button type="button" id="impLeadBtn" class="w-full porto-input rounded-lg px-2 text-[11px] flex items-center gap-1.5 text-left" style="height:30px" title="Pilih lead tujuan" aria-label="Pilih lead tujuan" aria-haspopup="listbox">
+                    <span id="impLeadBtnBody" class="flex-1 min-w-0 flex items-center gap-1.5 overflow-hidden"></span>
+                    <svg class="shrink-0 opacity-60" width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3,4.5 6,7.5 9,4.5"/></svg>
+                </button>
+                <select id="impLead" class="hidden"><option value="utama">Lead: Lead Utama</option></select>
+                <div id="impLeadPop" class="hidden absolute left-0 top-full mt-1 z-[60] w-full max-h-48 overflow-y-auto custom-scroll porto-card rounded-xl p-1 shadow-xl"></div>
             </div>
             <button type="button" id="impAdd" class="w-full px-3 py-2 rounded-xl bg-[var(--surface-2)] border border-[var(--border)] text-xs font-semibold text-amber-400">+ Tambah ke daftar</button>
             <textarea id="impText" rows="4" class="w-full porto-input rounded-xl p-2.5 text-xs num" placeholder="Tempel di sini: salinan riwayat Binance (Open Long, Close Short, dst.) atau baris Opened, Closed, Pair, Buy/Sell, PNL"></textarea>
