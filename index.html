@@ -1931,13 +1931,36 @@
         // Master lead tetap disimpan di Sheet (tab "Lead"), supaya semua akun melihat daftar yang sama.
         const LEAD_PALETTE = ['#a5a8ff', '#34d399', '#fb7185', '#f59e0b', '#38bdf8', '#c084fc',
                               '#f472b6', '#facc15', '#4ade80', '#fb923c', '#22d3ee', '#e879f9'];
+        const BINANCE_LEAD_URL = /^https:\/\/(?:www\.)?binance\.com\/(?:[a-z]{2,}(?:-[A-Za-z]+)?\/)?copy-trading\/lead-details\/(\d+)(?:[/?#].*)?$/i;
+        // Foto dari Apps Script berupa data URL, jadi aman digambar ke canvas (tidak kena CORS).
+        function cropImageSrcToAvatar(src, size) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.onload = () => {
+                    try {
+                        const w = img.naturalWidth, h = img.naturalHeight, side = Math.min(w, h);
+                        const px = Math.max(32, Math.round(size || 192));
+                        const c = document.createElement('canvas'); c.width = c.height = px;
+                        c.getContext('2d').drawImage(img, (w - side) / 2, (h - side) / 2, side, side, 0, 0, px, px);
+                        resolve(c.toDataURL('image/jpeg', 0.85));
+                    } catch (e) { reject(e); }
+                };
+                img.onerror = () => reject(new Error('gambar tidak terbaca'));
+                img.src = src;
+            });
+        }
         function openAddLeadDialog() {
             let picked = LEAD_PALETTE[0];
             let leadFoto = '';
+            let leadUid = '';
             const extra = document.createElement('div');
             extra.className = 'mt-1';
             extra.innerHTML = `
-                <div class="text-[10px] font-semibold text-[var(--text-faint)]">Pilih warna lead</div>
+                <div class="flex items-center gap-2">
+                    <button type="button" id="leadFetchBtn" class="px-2 py-1.5 rounded-lg bg-[var(--surface-2)] border border-[var(--border)] text-[11px] font-semibold text-amber-400">Ambil nama & foto dari link</button>
+                    <span id="leadFetchStatus" class="text-[10px] text-[var(--text-faint)] truncate"></span>
+                </div>
+                <div class="text-[10px] font-semibold text-[var(--text-faint)] mt-2.5">Pilih warna lead</div>
                 <div id="leadPalette" class="flex flex-wrap gap-1.5 mt-1.5">
                     ${LEAD_PALETTE.map(c => `<button type="button" data-c="${c}" class="w-7 h-7 rounded-lg border-2 active:scale-95 transition" style="background:${c};border-color:${c === picked ? '#ffffff' : 'transparent'}" aria-label="Warna ${c}"></button>`).join('')}
                 </div>
@@ -1953,8 +1976,9 @@
                 </div>`;
             const dlg = showDialog({
                 title: 'Tambah lead baru',
-                desc: 'Lead = trader Binance yang kamu ikuti. Foto membantu mengenali lead yang namanya non-abjad. Daftar lead dipakai bersama semua akun di Sheet ini.',
+                desc: 'Lead = trader Binance yang kamu ikuti. Tempel link halaman lead untuk mengisi nama + foto otomatis, atau isi manual. Daftar lead dipakai bersama semua akun di Sheet ini.',
                 fields: [
+                    { id: 'link', label: 'Link lead Binance (opsional)', placeholder: 'https://www.binance.com/id/copy-trading/lead-details/5121809002771580416' },
                     { id: 'nama', label: 'Nama lead', placeholder: 'Contoh: Lead Alpha', max: 30 },
                     { id: 'warna', label: 'Warna (hex)', value: picked, placeholder: '#a5a8ff', max: 7 }
                 ],
@@ -2008,6 +2032,53 @@
             };
             if (pal) pal.querySelectorAll('button').forEach(b => b.addEventListener('click', () => { picked = b.dataset.c; paint(); }));
             if (colorInput) colorInput.addEventListener('input', () => { picked = colorInput.value; paint(); });
+
+            // Ambil nama + foto dari halaman lead Binance lewat Apps Script (server-side, bebas CORS).
+            const fetchBtn = dlg.card.querySelector('#leadFetchBtn');
+            const fetchStatus = dlg.card.querySelector('#leadFetchStatus');
+            if (fetchBtn) fetchBtn.addEventListener('click', async () => {
+                const link = String(dlg.inputs.link.value || '').trim();
+                if (!BINANCE_LEAD_URL.test(link)) {
+                    if (fetchStatus) fetchStatus.textContent = 'Link tidak dikenal';
+                    dlg.setError('Tempel link lead-details Binance yang valid.');
+                    return;
+                }
+                dlg.setError('');
+                const oldText = fetchBtn.textContent;
+                fetchBtn.disabled = true; fetchBtn.textContent = 'Mengambil…';
+                if (fetchStatus) fetchStatus.textContent = 'Mengambil…';
+                try {
+                    const payload = { action: 'previewLead', url: link };
+                    if (SESSION && SESSION.token) payload.token = SESSION.token;
+                    const r = await acctPost(payload);
+                    if (ACCOUNT_MODE && r && r.error === 'auth') { checkAuthError(r); return; }
+                    if (!r || r.status !== 'success') {
+                        if (fetchStatus) fetchStatus.textContent = '';
+                        dlg.setError((r && r.msg) || 'Gagal mengambil data lead');
+                        return;
+                    }
+                    if (r.nama) dlg.inputs.nama.value = r.nama;
+                    leadUid = r.uid || '';
+                    if (r.foto) {
+                        try {
+                            leadFoto = await cropImageSrcToAvatar(r.foto, 192);
+                            if (fetchStatus) fetchStatus.textContent = 'Nama + foto terisi' + (leadUid ? ' · ' + leadUid : '');
+                        } catch (e) {
+                            leadFoto = '';
+                            if (fetchStatus) fetchStatus.textContent = 'Nama terisi, foto gagal dipotong';
+                        }
+                    } else {
+                        leadFoto = '';
+                        if (fetchStatus) fetchStatus.textContent = r.msg || 'Nama terisi, foto belum ada';
+                    }
+                    paintFoto();
+                } catch (e) {
+                    if (fetchStatus) fetchStatus.textContent = '';
+                    dlg.setError('Gagal menghubungi Sheet: ' + (e && e.message ? e.message : 'coba lagi'));
+                } finally {
+                    fetchBtn.disabled = false; fetchBtn.textContent = oldText;
+                }
+            });
             const fotoBtn = dlg.card.querySelector('#leadFotoBtn');
             if (fotoBtn) fotoBtn.addEventListener('click', () => {
                 const inp = document.createElement('input');
