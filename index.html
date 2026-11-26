@@ -6007,13 +6007,21 @@
         const lid = (opt && opt.lead) ? validLeadId(opt.lead) : 'utama';
         const seen = new Set(existing.filter(t => getTradeLead(t) === lid)
             .map(t => `${t.closed}|${String(t.pair).toUpperCase()}|${_p(t).toFixed(4)}|${getTradeSide(t)}|${lid}`));
+        // Salinan Binance biasanya descending (yang terbaru paling atas). Simpan timestamp penuh
+        // (tanggal + jam) di _ts, lalu urutkan ascending di akhir supaya kronologis: pagi dulu, malam belakangan.
+        const tsOf = r => r && r.d ? r.d._ts : (r && r._ts);
+        const idxOf = r => r && r.d ? r.d._i : (r && r._i);
+        // Kalau timestampnya sama (baris manual cuma punya tanggal, tanpa jam), pakai urutan asli
+        // secara TERBALIK: salinan Binance descending, jadi baris paling bawah = yang paling awal.
+        const cmpRow = (a, b) => String(tsOf(a) || '').localeCompare(String(tsOf(b) || '')) || (idxOf(b) || 0) - (idxOf(a) || 0);
+        const cmpTrade = (a, b) => String(a._ts || '').localeCompare(String(b._ts || '')) || (b._i || 0) - (a._i || 0);
         text.split(/\r?\n/).forEach((ln, i) => {
             if (!ln.trim()) return;
             const bfill = impBinanceFill(ln); if (bfill) { bf.push(bfill); return; }
             if (i === 0 && /^\W*(date|time|waktu|tanggal)/i.test(ln)) return;   // baris judul salinan
             const c = impSplit(ln);
             if (i === 0 && c.length >= 5 && isNaN(parseFloat(c[4].replace(',', '.')))) return;   // baris judul
-            const bad = msg => { const m = `Baris ${i + 1}: ${msg}`; errs.push(m); rows.push({ st: 'err', msg: m }); };
+            const bad = msg => { const m = `Baris ${i + 1}: ${msg}`; errs.push(m); rows.push({ st: 'err', msg: m, _ts: '', _i: i }); };
             if (c.length !== 5) return bad('harus 5 kolom (desimal pakai titik, atau pisahkan kolom dengan ;)');
             let o = impDate(c[0]); const cl = impDate(c[1]);
             let pair = c[2].toUpperCase(); if (pair && !pair.includes('USDT')) pair += 'USDT';
@@ -6024,7 +6032,7 @@
             if (!sd) return bad('isi Buy atau Sell');
             if (!isFinite(pnl)) return bad('PNL bukan angka');
             if (o > cl) o = cl;
-            const d = { opened: o, closed: cl, pair, side: sd, pnl };
+            const d = { opened: o, closed: cl, pair, side: sd, pnl, _ts: cl, _i: i };   // _ts = timestamp untuk sorting akhir
             const [y, m, dd] = cl.split('-');
             const key = `${dd}/${m}/${y}|${pair}|${pnl.toFixed(4)}|${sd}|${lid}`;
             if (seen.has(key)) { dup++; rows.push({ st: 'dup', d }); return; }
@@ -6033,13 +6041,18 @@
         let openPos = 0;
         if (bf.length) {
             const r = impBinanceTrades(bf, !!(opt && opt.fee)); openPos = r.open;
-            r.trades.forEach(t => {
-                const d = { opened: t.o.slice(0, 10), closed: t.c.slice(0, 10), pair: t.sym, side: t.long ? 'Buy' : 'Sell', pnl: impRnd(t.pnl, 4) };
+            r.trades.forEach((t, idx) => {
+                const d = { opened: t.o.slice(0, 10), closed: t.c.slice(0, 10), pair: t.sym, side: t.long ? 'Buy' : 'Sell', pnl: impRnd(t.pnl, 4),
+                            _ts: t.c, _i: 100000 + idx };   // t.c masih lengkap dengan jam, bukan cuma tanggal
                 const [y, m, dd] = d.closed.split('-'); const key = `${dd}/${m}/${y}|${d.pair}|${d.pnl.toFixed(4)}|${d.side}|${lid}`;
                 if (seen.has(key)) { dup++; rows.push({ st: 'dup', d }); return; }
                 seen.add(key); ok.push(d); rows.push({ st: 'ok', d });
             });
         }
+        // Urutkan ascending berdasarkan timestamp Ditutup yang lengkap (tanggal + jam).
+        // Ini juga membalik blok salinan Binance yang descending, termasuk jam dalam tanggal yang sama.
+        ok.sort(cmpTrade);
+        rows.sort(cmpRow);
         return { ok, errs, dup, rows, openPos, lead: lid };   // lead ikut dikirim supaya preview/showToast menyebut tujuannya
     }
     /*PURE_END*/
