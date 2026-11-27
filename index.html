@@ -1399,35 +1399,8 @@
                         </div>
                         <span class="text-[10px] text-[var(--text-faint)]">Tahan untuk edit/hapus</span>
                     </div>
-                    <!-- FITUR TAMBAHAN: filter riwayat (satu baris; tanggal lewat tombol kalender) -->
-                    <div id="fltBar" class="relative mb-1.5">
-                        <div class="flex gap-1 items-center">
-                            <input id="fltQ" type="text" placeholder="Cari pair..." autocomplete="off" class="porto-input rounded-lg px-2 text-[11px] flex-1 min-w-0" style="height:30px">
-                            <select id="fltSide" class="porto-input rounded-lg px-1 text-[11px]" style="height:30px;width:60px"><option value="">Side</option><option value="Buy">Buy</option><option value="Sell">Sell</option></select>
-                            <select id="fltRes" class="porto-input rounded-lg px-1 text-[11px]" style="height:30px;width:64px"><option value="">Hasil</option><option value="profit">Profit</option><option value="loss">Loss</option></select>
-                            <button type="button" id="fltDateBtn" class="porto-input rounded-lg text-[13px] shrink-0 leading-none" style="height:30px;width:32px" aria-label="Filter tanggal">&#128197;</button>
-                            <button type="button" id="fltReset" class="hidden shrink-0 px-1.5 rounded-lg text-[10px] font-semibold text-amber-400 whitespace-nowrap" style="height:30px"></button>
-                        </div>
-                        <div class="flex items-center gap-2 mt-1.5">
-                            <button type="button" id="fltLeadBtn" class="porto-input rounded-lg px-1.5 text-[11px] inline-flex items-center gap-1 max-w-[130px]" style="height:26px" aria-label="Filter lead"><span id="fltLeadBtnBody" class="truncate">Semua lead</span></button>
-                            <select id="fltLead" class="hidden"><option value="">Semua lead</option></select>
-                            <div id="fltLeadPop" class="hidden absolute left-0 top-full mt-1 z-50 w-44 max-h-56 overflow-y-auto custom-scroll porto-card rounded-xl p-1 shadow-xl"></div>
-                            <span class="text-[10px] text-[var(--text-faint)]">Urutkan</span>
-                            <div id="fltSort" class="inline-flex rounded-lg p-0.5 bg-[var(--surface-2)]">
-                                <button type="button" data-sort="closed">Closed</button>
-                                <button type="button" data-sort="opened">Opened</button>
-                            </div>
-                            <button type="button" id="fltReorder" aria-pressed="false"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="4,5.5 7,2.5 10,5.5"/><polyline points="4,8.5 7,11.5 10,8.5"/></svg><span>Atur urutan</span></button>
-                        </div>
-                        <div id="mvHint" class="hidden mt-1.5 text-[10px] leading-snug text-[var(--text-dim)]">Geser ▲ ▼ untuk menyamakan urutan trade di hari yang sama dengan Binance. Trade tidak bisa pindah ke hari lain.</div>
-                        <div id="fltDatePop" class="hidden absolute right-0 top-full mt-1 porto-card rounded-xl shadow-lg" style="width:min(320px, calc(100vw - 24px)); padding:10px 8px 8px; z-index:40">
-                            <div class="rk-head"><span>Pilih rentang tanggal</span><button type="button" class="rk-x" aria-label="Tutup kalender filter">×</button></div>
-                            <input id="fltCal" type="text" tabindex="-1" aria-hidden="true">
-                            <div class="rk-foot"><div class="rk-foot-l"><span id="fltDateLabel">Semua tanggal</span></div><button type="button" id="fltDateClear">Hapus tanggal</button></div>
-                            <input id="fltFrom" type="hidden">
-                            <input id="fltTo" type="hidden">
-                        </div>
-                    </div>
+                    <!-- Filter Riwayat dipindah ke modal header (#riwayatFilterModal) supaya
+                         popup tidak terpotong #tabPager di HP dan daftar kosong tidak menghitam. -->
                     <div id="loading" class="text-center text-xs text-[var(--text-faint)] py-6" style="display:none;">Memuat data...</div>
                     <div id="tradeList" class="space-y-1.5 overflow-y-auto pr-1 custom-scroll lg:flex-1 lg:min-h-0"></div>
                     <button type="button" class="see-all" data-go="riwayat"><span>Lihat semua riwayat trade</span><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="5,3 9,7 5,11"/></svg></button>
@@ -6009,6 +5982,47 @@
             <button type="button" id="impClose" class="w-full text-center px-4 py-2.5 rounded-xl text-slate-400 text-[13px] font-medium">Tutup</button>
         </div>
     </div>
+
+    <!-- MODAL FILTER RIWAYAT: dibuka dari header "Riwayat Trade" (pola sama seperti Rekap & Impor).
+         Berada di luar #tabPager supaya popup lead/kalender tidak terpotong overflow di HP. -->
+    <div id="riwayatFilterModal" style="z-index:95" onclick="if(event.target===this) closeRiwayatFilter()" class="fixed inset-2 sm:inset-0 bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4 hidden">
+        <div class="porto-card w-full max-w-3xl p-4 sm:p-5 rounded-2xl space-y-3 rise-in max-h-[92vh] overflow-y-auto custom-scroll">
+            <div class="flex items-center justify-between gap-3">
+                <div class="flex items-center gap-2"><span class="section-dot"></span><h2 class="section-label">Filter riwayat trade</h2></div>
+                <button type="button" id="fltModalClose" class="rk-x" aria-label="Tutup filter">×</button>
+            </div>
+            <p class="text-[11px] text-[var(--text-faint)] leading-relaxed">Cari pair, pilih lead, side/hasil, atau rentang tanggal. Perubahan langsung diterapkan ke daftar di belakang modal.</p>
+            <div id="fltBar" class="relative">
+                <div class="flex flex-wrap gap-1 items-center">
+                    <input id="fltQ" type="text" placeholder="Cari pair..." autocomplete="off" class="porto-input rounded-lg px-2 text-[11px] flex-1 min-w-[120px]" style="height:34px">
+                    <select id="fltSide" class="porto-input rounded-lg px-1 text-[11px]" style="height:34px;width:64px"><option value="">Side</option><option value="Buy">Buy</option><option value="Sell">Sell</option></select>
+                    <select id="fltRes" class="porto-input rounded-lg px-1 text-[11px]" style="height:34px;width:70px"><option value="">Hasil</option><option value="profit">Profit</option><option value="loss">Loss</option></select>
+                    <button type="button" id="fltDateBtn" class="porto-input rounded-lg text-[13px] shrink-0 leading-none" style="height:34px;width:36px" aria-label="Filter tanggal">&#128197;</button>
+                    <button type="button" id="fltReset" class="hidden shrink-0 px-2 rounded-lg text-[10px] font-semibold text-amber-400 whitespace-nowrap" style="height:34px"></button>
+                </div>
+                <div class="flex flex-wrap items-center gap-2 mt-2">
+                    <button type="button" id="fltLeadBtn" class="porto-input rounded-lg px-1.5 text-[11px] inline-flex items-center gap-1 max-w-[180px]" style="height:30px" aria-label="Filter lead"><span id="fltLeadBtnBody" class="truncate">Semua lead</span></button>
+                    <select id="fltLead" class="hidden"><option value="">Semua lead</option></select>
+                    <span class="text-[10px] text-[var(--text-faint)]">Urutkan</span>
+                    <div id="fltSort" class="inline-flex rounded-lg p-0.5 bg-[var(--surface-2)]">
+                        <button type="button" data-sort="closed">Closed</button>
+                        <button type="button" data-sort="opened">Opened</button>
+                    </div>
+                    <button type="button" id="fltReorder" aria-pressed="false"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="4,5.5 7,2.5 10,5.5"/><polyline points="4,8.5 7,11.5 10,8.5"/></svg><span>Atur urutan</span></button>
+                </div>
+                <div id="fltLeadPop" class="hidden mt-2 w-full max-h-56 overflow-y-auto custom-scroll porto-card rounded-xl p-1 shadow-xl"></div>
+                <div id="mvHint" class="hidden mt-2 text-[10px] leading-snug text-[var(--text-dim)]">Geser ▲ ▼ untuk menyamakan urutan trade di hari yang sama dengan Binance. Trade tidak bisa pindah ke hari lain.</div>
+                <div id="fltDatePop" class="hidden mt-2 porto-card rounded-xl shadow-lg" style="width:100%; padding:10px 8px 8px; z-index:40">
+                    <div class="rk-head"><span>Pilih rentang tanggal</span><button type="button" class="rk-x" aria-label="Tutup kalender filter">×</button></div>
+                    <input id="fltCal" type="text" tabindex="-1" aria-hidden="true">
+                    <div class="rk-foot"><div class="rk-foot-l"><span id="fltDateLabel">Semua tanggal</span></div><button type="button" id="fltDateClear">Hapus tanggal</button></div>
+                    <input id="fltFrom" type="hidden">
+                    <input id="fltTo" type="hidden">
+                </div>
+            </div>
+            <button type="button" id="fltModalDone" class="w-full text-center px-4 py-2.5 rounded-xl text-[13px] font-semibold" style="background:var(--accent);color:#fff">Selesai</button>
+        </div>
+    </div>
     <script>
     // ═════ FITUR TAMBAHAN (berdiri sendiri; tidak mengubah kode di atas) ═════
     /*PURE_START*/
@@ -6378,6 +6392,7 @@
                 const rows = hist().filter(match);
                 paintRiwayatSum(rows);
                 list.innerHTML = '';
+                list.classList.toggle('riwayat-empty', !rows.length);
                 if (!rows.length) {
                     list.innerHTML = '<p class="text-xs text-[var(--text-faint)] text-center py-4">Belum ada data trading.</p>';
                     return;
@@ -6448,9 +6463,35 @@
             renderRiwayatView();
             const all = hist(), shown = all.filter(match).length;
             const rb = $('fltReset'); rb.classList.toggle('hidden', !active()); rb.textContent = `${shown}/${all.length} \u2715`;
+            const hdr = $('tabBtnRiwayat');
+            if (hdr) { if (active()) hdr.dataset.filter = `${shown}/${all.length}`; else delete hdr.dataset.filter; }
             $('fltDateBtn').style.borderColor = (F.from || F.to) ? '#5960e5' : '';
             if (obs) obs.observe(list, { childList: true });
         }
+
+        // Modal filter dibuka dari header Riwayat Trade (pola sama seperti header Rekap & tombol Impor).
+        // Modal dipasang di body, bukan di dalam #tabPager, jadi popup tidak terpotong overflow HP.
+        const fltModal = $('riwayatFilterModal');
+        function closeRiwayatFilter() {
+            if (fltModal) fltModal.classList.add('hidden');
+            const dp = $('fltDatePop'); if (dp) dp.classList.add('hidden');
+            const lp = $('fltLeadPop'); if (lp) lp.classList.add('hidden');
+        }
+        function openRiwayatFilter() {
+            if (document.body.dataset.view !== 'riwayat' || !fltModal) return;
+            closeLeadPops();
+            const dp = $('fltDatePop'); if (dp) dp.classList.add('hidden');
+            fltModal.classList.remove('hidden');
+        }
+        window.openRiwayatFilter = openRiwayatFilter;
+        window.closeRiwayatFilter = closeRiwayatFilter;
+        if ($('fltModalClose')) $('fltModalClose').onclick = closeRiwayatFilter;
+        if ($('fltModalDone')) $('fltModalDone').onclick = closeRiwayatFilter;
+        const riwayatHeader = $('tabBtnRiwayat');
+        if (riwayatHeader) riwayatHeader.addEventListener('click', e => {
+            if (document.body.dataset.view !== 'riwayat') return;
+            e.stopPropagation(); openRiwayatFilter();
+        });
         obs = new MutationObserver(() => { if (!riwayatRendering) apply(); }); obs.observe(list, { childList: true });
         [['fltQ', 'q', v => v.trim().toUpperCase()], ['fltLead', 'lead', v => v], ['fltSide', 'side', v => v], ['fltRes', 'res', v => v]]
             .forEach(([id, key, fn]) => { const e = $(id); const h = () => { F[key] = fn(e.value); apply(); }; e.addEventListener('input', h); e.addEventListener('change', h); });
@@ -6590,7 +6631,7 @@
         document.querySelectorAll('h2.section-label').forEach(h => {
             if (h.textContent.trim() !== 'Statistik') return;
             const w = document.createElement('div'); w.className = 'ml-auto flex gap-3 items-center';
-            const mk = (txt, fn, cls) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = txt; b.className = 'section-label'; b.style.cssText = 'background:none;border:0;padding:4px 0;margin:-4px 0;cursor:pointer;color:' + cls; const cs = getComputedStyle(h); ['fontFamily', 'fontSize', 'fontWeight', 'fontStyle', 'letterSpacing', 'lineHeight', 'textTransform'].forEach(k => { if (cs[k]) b.style[k] = cs[k]; }); b.style.setProperty('font-size', '11px', 'important'); b.onclick = e => { e.stopPropagation(); fn(); }; w.appendChild(b); };
+            const mk = (txt, fn, cls) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = txt; b.className = 'section-label' + (txt === 'Impor' ? ' imp-proxy' : ''); b.style.cssText = 'background:none;border:0;padding:4px 0;margin:-4px 0;cursor:pointer;color:' + cls; const cs = getComputedStyle(h); ['fontFamily', 'fontSize', 'fontWeight', 'fontStyle', 'letterSpacing', 'lineHeight', 'textTransform'].forEach(k => { if (cs[k]) b.style[k] = cs[k]; }); b.style.setProperty('font-size', '11px', 'important'); b.onclick = e => { e.stopPropagation(); fn(); }; w.appendChild(b); };
             mk('Lanjutan', openAdvStats, '#a5a8ff'); mk('Impor', openImport, 'var(--text-dim)');
             h.parentElement.appendChild(w);
         });
@@ -6656,6 +6697,7 @@
                 if (document.querySelector('.flatpickr-calendar.open')) return;           // kalender yang terbuka ditutup oleh kalendernya sendiri
                 if (isOpen('advStatsModal')) { $('advStatsModal').classList.add('hidden'); e.stopImmediatePropagation(); return; }
                 if (isOpen('importModal')) { if (!window.__impBusy) $('importModal').classList.add('hidden'); e.stopImmediatePropagation(); return; }
+                if (isOpen('riwayatFilterModal') && typeof window.closeRiwayatFilter === 'function') { window.closeRiwayatFilter(); e.stopImmediatePropagation(); return; }
                 const pop = $('fltDatePop'); if (pop && !pop.classList.contains('hidden')) { pop.classList.add('hidden'); e.stopImmediatePropagation(); }
                 return;
             }
@@ -6799,7 +6841,23 @@
     #widgetsCol .adv-orig { display: none !important; }
     /* Popup pilih lead di Riwayat: nama panjang (China/Korea/Jepang) tidak boleh kepotong */
     #fltLeadPop { width: min(300px, calc(100vw - 32px)) !important; max-height: 280px !important; }
-    #statsImportHeader { display: none; }                         /* HP Statistik saja; desktop tidak berubah */
+    /* Modal filter Riwayat: popup di dalamnya jadi blok statis (tidak terpotong) seperti modal Impor */
+    #riwayatFilterModal #fltLeadPop { position: static !important; width: 100% !important; max-height: 220px !important; margin-top: 8px; }
+    #riwayatFilterModal #fltDatePop { position: static !important; width: 100% !important; margin-top: 8px; }
+    #riwayatFilterModal #fltBar { position: static; }
+    #riwayatFilterModal .rk-x, .rk-x { width: 28px; height: 28px; border-radius: 50%; border: 0; background: var(--surface-2); color: var(--text-dim); font-size: 18px !important; line-height: 1; cursor: pointer; }
+    /* Header Riwayat Trade bisa diketuk untuk membuka modal filter, sama seperti header Rekap */
+    body[data-view="riwayat"] #tabBtnRiwayat { pointer-events: auto !important; cursor: pointer; }
+    body[data-view="riwayat"] #tabBtnRiwayat::before {
+        content: ''; display: inline-block; width: 14px; height: 14px; margin-right: 6px; vertical-align: -2px; background: currentColor;
+        -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 5h16M7 12h10M10 19h4'/%3E%3C/svg%3E") center / contain no-repeat;
+        mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 5h16M7 12h10M10 19h4'/%3E%3C/svg%3E") center / contain no-repeat;
+    }
+    body[data-view="riwayat"] #tabBtnRiwayat[data-filter]::after { content: " · " attr(data-filter); font-weight: 500; opacity: .9; }
+    #statsImportHeader { display: none; }                         /* ditampilkan per-view di bawah */
+    /* Impor lama (di judul Statistik lanjutan / kartu Statistik) diganti header tersendiri */
+    body[data-view="stats"] #statsToolbar .adv-head button[data-proxy="Impor"],
+    body[data-view="stats"] .imp-proxy { display: none !important; }
     #statsImportHeader button {
         width: 100%; height: 40px; display: flex; align-items: center; justify-content: center; gap: 8px;
         border: 1px solid var(--border); border-radius: var(--r-box); background: var(--surface-2);
@@ -6913,13 +6971,14 @@
     /* ═════════ HP (< 768px) ═════════ */
     @media (max-width: 767px) {
         body[data-view="stats"] #tabBar, body[data-view="profil"] #tabBar { display: none !important; }
-        body[data-view="stats"] #statsToolbar .adv-head button { display: none !important; }  /* Impor lama diganti tombol header */
-        /* HP Statistik: Impor → Lead & sorotan → Statistik lanjutan → Statistik Cepat → Kalender */
-        body[data-view="stats"] #statsImportHeader { display: block; order: -2; }
+        body[data-view="stats"] #statsToolbar .adv-head button,
+        body[data-view="stats"] .imp-proxy { display: none !important; }  /* Impor lama diganti tombol header */
+        /* HP Statistik: Lead & sorotan → Statistik lanjutan → Statistik Cepat → Kalender → Impor massal */
         body[data-view="stats"] #statsSideCard { order: -1; }
         body[data-view="stats"] #statsToolbar { order: 0; }
         body[data-view="stats"] #quickStatsCard { order: 1; }
         body[data-view="stats"] #calendarCard { order: 2; }
+        body[data-view="stats"] #statsImportHeader { display: block; order: 3; }
 
         body[data-view="rekap"] #tabBar, body[data-view="riwayat"] #tabBar { top: env(safe-area-inset-top, 0px) !important; }
 
@@ -7028,9 +7087,10 @@
         body[data-view="stats"] #widgetsCol {
             display: grid !important;
             grid-template-columns: minmax(0, 1fr) minmax(0, 760px);
-            grid-template-areas: "adv adv" "quick cal" "side cal";
+            grid-template-areas: "imp imp" "adv adv" "quick cal" "side cal";
             gap: 10px; align-items: start;
         }
+        body[data-view="stats"] #statsImportHeader { display: block; grid-area: imp; }
         body[data-view="stats"] #statsToolbar { grid-area: adv; }
         body[data-view="stats"] #quickStatsCard { grid-area: quick; }
         body[data-view="stats"] #calendarCard { grid-area: cal; justify-self: end; width: 100%; }
@@ -7121,6 +7181,9 @@
     #rekapSum .rs-v, #riwayatSum .rs-v { font-family: 'Space Grotesk', sans-serif; font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; }
     #rekapSum .rs-r, #riwayatSum .rs-r { margin-top: 2px; font-size: 10.5px; color: var(--text-dim); }
     #rekapEmpty { font-size: 12px; color: var(--text-faint); text-align: center; padding: 22px 8px; }
+    /* Daftar kosong (mis.lead tanpa histori): tetap terlihat seperti kartu, bukan area hitam polos di HP */
+    #tradeList.riwayat-empty { min-height: 120px; display: flex; align-items: center; justify-content: center; background: var(--surface); border: 1px dashed var(--border); border-radius: 14px; }
+    #tradeList.riwayat-empty > p { padding: 12px 14px !important; }
 
     /* ── tombol + mengambang (gaya Material: kotak membulat, ungu) ── */
     #bfab {
@@ -7278,6 +7341,7 @@
             if (rb && !rb.classList.contains('hidden')) rb.click();
             const pop = $('fltDatePop'); if (pop) pop.classList.add('hidden');
         }
+        if (v !== 'riwayat' && typeof window.closeRiwayatFilter === 'function') window.closeRiwayatFilter();
         if (v === 'home' || v === 'rekap' || v === 'riwayat') {
             // Beranda: tab terakhir yang dibuka (awalnya Rekap). Halaman Rekap / Riwayat: daftar masing-masing
             requestAnimationFrame(() => {

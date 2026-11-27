@@ -4,7 +4,7 @@ PATCH: DATA PER LEAD (trader yang diikuti)
 File hasil patch ada di folder ini:
 - code.gs       -> ganti isi Code.gs di Apps Script lalu DEPLOY ulang (ada action=renameLead baru)
 - index.html    -> ganti index.html di repo GitHub
-- sw.js         -> ganti sw.js di repo GitHub (cache version sudah naik jadi v26-impor-riwayat)
+- sw.js         -> ganti sw.js di repo GitHub (cache version sudah naik jadi v27-filter-header)
 - manifest.json   -> ganti manifest.json di repo GitHub (nama/short_name + icon lokal 192/512).
 - icon-64.png     -> favicon tab browser (64x64).
 - icon-180.png    -> apple-touch-icon untuk home screen iOS.
@@ -34,7 +34,7 @@ Langkah pasang
 3. Apps Script -> Terapkan -> Kelola deployment -> pensil -> Versi: Versi baru -> Terapkan.
    Link /exec tidak berubah, jadi Database.js tidak perlu diedit.
 4. Push index.html dan sw.js ke GitHub (repo romini1993/sample).
-5. Buka aplikasi. Service worker v26 akan membuang cache lama otomatis.
+5. Buka aplikasi. Service worker v27 akan membuang cache lama otomatis.
 
 PENTING untuk fitur ambil dari link
 -----------------------------------
@@ -123,8 +123,8 @@ Foto lead muncul di mana
   Diklik akan membuka daftar lead; tiap baris juga berisi foto + nama (mirip badge riwayat).
 - Modal Edit Trade dan modal Impor massal pakai pola yang sama: foto + nama di tombol dan di daftar.
   Tombol "Tambah" di samping pilihan lead form sengaja TANPA foto.
-- Tombol filter lead di Riwayat Trade: diklik akan membuka daftar lead dengan foto + nama
-  (select biasa tidak bisa menampilkan gambar).
+- Tombol filter lead di modal filter Riwayat Trade: diklik akan membuka daftar lead dengan
+  foto + nama (select biasa tidak bisa menampilkan gambar). Daftar ini tampil selebar modal.
 - Badge kecil di tiap kartu riwayat trade.
 - Kalau lead belum punya foto, aplikasi menampilkan inisial dengan warna lead.
 - <select> aslinya disimpan hidden tapi tetap dipakai sebagai sumber nilai, jadi semua kode lama
@@ -165,8 +165,9 @@ Yang berubah di aplikasi
 - Modal Impor sekarang cuma menyediakan dua input: pilih lead tujuan dan kolom "Smart input".
   Input manual Opened/Closed/Pair/Side/PNL plus tombol "+ Tambah ke daftar" sudah dihapus —
   tidak perlu mengisi trade satu per satu. Tempel saja data Binance, lalu tekan Impor.
-- Di HP, halaman Statistik punya tombol header "Impor massal" tersendiri di paling atas.
-  Tata letak desktop sengaja tidak diubah.
+- Halaman Statistik punya tombol header "Impor massal" tersendiri. Di HP tombol ini ada
+  di PALING BAWAH, setelah Kalender aktivitas. Di desktop tombolnya jadi header tersendiri
+  di atas "Statistik lanjutan" (grid area "imp"), jadi tidak menempel di judul kartu.
 - URUTAN IMPOR: salinan riwayat Binance biasanya descending (terbaru di atas). Sebelum dikirim ke
   Sheet, semua baris diurutkan ASCENDING memakai timestamp Ditutup yang lengkap (tanggal + jam),
   bukan cuma tanggalnya. Jadi dalam tanggal yang sama, posisi yang ditutup pagi masuk lebih dulu,
@@ -230,7 +231,7 @@ Perbaikan performa HP & orientasi
   avatar di-cache per (id, ukuran) + lazy-load, animasi cuma 12 kartu teratas di HP.
 - Efek hover kartu dimatikan di perangkat layar sentuh supaya scroll tidak bikin layer komposit kerja terus.
 - `manifest.json`: orientation diubah dari `portrait` ke `any`, jadi HP bisa landscape / mode desktop
-  lagi kalau dipiringin. (Cache v26 perlu di-refresh supaya manifest lama terbuang.)
+  lagi kalau dipiringin. (Cache v27 perlu di-refresh supaya manifest lama terbuang.)
 
 Tata letak desktop & tampilan Riwayat
 --------------------------------------
@@ -242,15 +243,20 @@ Tata letak desktop & tampilan Riwayat
   (rentang tanggal · jumlah hari · jumlah trade · total USDT + rupiah, memakai gaya #rekapSum),
   lalu satu baris ringkasan per tanggal; ketuk baris untuk membuka kartu-kartu trade di dalamnya.
   Berlaku di HP dan desktop. Tanpa filter dan urutan masih Closed, tampilan tetap daftar biasa.
-- Statistik HP: urutannya sekarang tombol header "Impor massal" → "Lead & sorotan" →
-  "Statistik lanjutan" → Statistik Cepat → Kalender. Jadi "Lead & sorotan" ada di paling atas
-  (setelah tombol Impor). Di desktop (>=1024px) tata letak tidak berubah: "Lead & sorotan"
-  tetap di KIRI BAWAH di bawah Statistik Cepat, kalender di kanan dengan lebar maks. 760px.
-- Filter tanggal Riwayat sekarang memakai kalender rentang inline seperti di header Rekap:
-  ketuk ikon 📅, pilih tanggal mulai lalu tanggal sampai (satu ketuk = satu hari penuh).
-  Tidak ada lagi input tanggal lama yang diketik manual.
-- Popup pemilih lead di filter Riwayat diperlebar (300px, dibatasi lebar layar HP) dan nama
-  lead yang panjang sekarang dibungkus, tidak dipotong pakai elipsis.
+- Statistik HP: urutannya sekarang "Lead & sorotan" → "Statistik lanjutan" → Statistik Cepat
+  → Kalender → tombol header "Impor massal" di PALING BAWAH (impor dirasa kurang berguna,
+  jadi tidak mengganggu ringkasan). Di desktop (>=1024px) tombol Impor jadi header tersendiri
+  di baris paling atas; "Lead & sorotan" tetap di KIRI BAWAH di bawah Statistik Cepat,
+  kalender di kanan dengan lebar maks. 760px.
+- Riwayat Trade: header "Riwayat Trade" sekarang bisa diketuk seperti header "Rekap Harian".
+  Seluruh filter (cari pair, lead, Side/Hasil, urutan, atur urutan, dan kalender rentang)
+  dipindah ke modal filter bergaya Impor, keluar dari #tabPager. Ini memperbaiki bug HP:
+  popup lead/kalender tidak lagi ketutupan item bawah, dan daftar yang kosong tidak menghitam.
+- Filter tanggal Riwayat memakai kalender rentang inline seperti di header Rekap: ketuk ikon 📅,
+  pilih tanggal mulai lalu tanggal sampai (satu ketuk = satu hari penuh). Tidak ada lagi input
+  tanggal lama yang diketik manual.
+- Di dalam modal filter, popup lead dan kalender tampil sebagai blok statis selebar modal,
+  jadi tidak bisa terpotong oleh overflow kartu/daftar. Nama lead panjang dibungkus.
 
 Edit lead yang diikuti
 ----------------------
@@ -288,7 +294,7 @@ Ganti ikon aplikasi
    icon-64.png untuk favicon tab, icon-180.png untuk apple-touch-icon iOS.
 3. manifest.json memakai icon-192.png ("any") dan icon-512.png ("any maskable").
    Jangan pakai URL CDN /128/ lalu diklaim 512x512 — hasilnya buram dan bisa gagal install.
-4. Push juga sw.js (v26-impor-riwayat) supaya cache lama dibuang.
+4. Push juga sw.js (v27-filter-header) supaya cache lama dibuang.
 5. Nama di bawah icon diatur lewat "short_name"; warna status bar lewat "theme_color".
 
 Pintasan Profil (Binance & Sheet)
