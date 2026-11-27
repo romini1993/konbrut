@@ -5988,9 +5988,9 @@
                 <div id="impLeadPop" class="hidden absolute left-0 top-full mt-1 z-[60] w-full max-h-48 overflow-y-auto custom-scroll porto-card rounded-xl p-1 shadow-xl"></div>
             </div>
             <button type="button" id="impAdd" class="w-full px-3 py-2.5 rounded-xl bg-[var(--surface-2)] border border-[var(--border)] text-[13px] font-semibold text-amber-400">+ Tambah ke daftar</button>
-            <textarea id="impText" rows="5" class="w-full porto-input rounded-xl p-3 text-[12px] sm:text-[13px] num" placeholder="Tempel blok 'B SOXLUSDT' / 'S SOXLUSDT' dari aplikasi Binance, atau salinan riwayat Open/Close Long/Short, atau baris 5 kolom"></textarea>
+            <textarea id="impText" rows="5" class="w-full porto-input rounded-xl p-3 text-[12px] sm:text-[13px] num" placeholder="Tempel tabel ekspor Binance (ada header Symbol/Side/Opened/Closing PNL/Closed), blok 'B SOXLUSDT', riwayat Open/Close, atau baris 5 kolom"></textarea>
             <label class="flex items-center gap-2 text-[11px] text-[var(--text-faint)]"><input id="impFee" type="checkbox"> Riwayat Binance: kurangi fee dari PNL (kalau dimatikan, PNL = Realized Profit)</label>
-            <p class="text-[11px] text-[var(--text-faint)] leading-relaxed">Format HP: tiap posisi diawali <b>B</b> (Buy/Long) atau <b>S</b> (Sell/Short) + symbol, lalu blok berisi <b>PNL</b> dan tanggal <b>Dibuka</b>/<b>Ditutup</b> lengkap dengan jam. Koma desimal otomatis jadi titik (1.018,41792 → 1018.41792). Format lama tetap jalan: Open/Close Long/Short, atau 5 kolom (tanggal boleh 25102026, 25/10/2026, atau 2026-10-25; dipisah tab, koma, titik koma, atau titik).</p>
+            <p class="text-[11px] text-[var(--text-faint)] leading-relaxed">Tabel ekspor (Symbol, Side, Opened, Closing PNL, Closed, dst.) dibaca dari <b>nama kolom</b>, urutan bebas, dipisah tab/koma/titik koma. Nilai bersatuan (0,075 ETH) &amp; jam bermilidetik didukung. Format HP: blok <b>B</b> (Buy/Long) / <b>S</b> (Sell/Short) + symbol, dengan PNL &amp; tanggal Dibuka/Ditutup. Koma desimal otomatis jadi titik (1.018,41792 → 1018.41792). Format lama tetap jalan: Open/Close Long/Short atau 5 kolom.</p>
             <div id="impInfo" class="text-[12px] text-[var(--text-dim)] leading-relaxed"></div>
             <div id="impPrev" class="max-h-56 overflow-y-auto custom-scroll text-[12px] sm:text-[13px] num space-y-1"></div>
             <button type="button" id="impRun" disabled class="w-full px-3 py-3 rounded-xl bg-amber-500 text-[#ffffff] text-[13px] font-bold disabled:opacity-40">Impor</button>
@@ -6136,6 +6136,103 @@
         out.sort((a, b) => (a.c < b.c ? -1 : (a.c > b.c ? 1 : 0)));
         return { trades: out, open: Object.keys(st).filter(k => st[k].q > 0).length };
     }
+    // ── TABEL EKSPOR (header + baris): kolom dikenali dari NAMA, bukan dari urutan.
+    //    Contoh: Symbol | Isolated | Side | Status | Opened | Entry Price | Max. Open Interest
+    //            | Closing PNL | Closed | Avg. Close Price | Closed Vol.
+    //    Tab / koma / titik koma / spasi ganda semua diterima. Nilai boleh bersatuan
+    //    ("0.075 ETH", "-0.2926 USDT") dan waktu boleh punya milidetik.
+    const impNorm = s => String(s == null ? '' : s).toLowerCase()
+        .replace(/[^a-z0-9\u0080-\uFFFF]+/g, ' ').replace(/\s+/g, ' ').trim();
+    function impDelim(ln) {
+        if (String(ln).indexOf('\t') >= 0) return 'tab';
+        if (String(ln).indexOf(';') >= 0) return 'semi';
+        if (String(ln).indexOf(',') >= 0) return 'comma';
+        if (/\s{2,}/.test(String(ln))) return 'space';
+        return '';
+    }
+    function impCells(ln, d) {
+        const s = String(ln).trim();
+        if (d === 'tab') return s.split('\t').map(x => x.trim());
+        if (d === 'semi') return s.split(';').map(x => x.trim());
+        if (d === 'space') return s.split(/\s{2,}/).map(x => x.trim());
+        const out = []; let cur = '', q = false;
+        for (let i = 0; i < s.length; i++) {
+            const ch = s[i];
+            if (ch === '"') { if (q && s[i + 1] === '"') { cur += '"'; i++; } else q = !q; }
+            else if (ch === ',' && !q) { out.push(cur.trim()); cur = ''; }
+            else cur += ch;
+        }
+        out.push(cur.trim()); return out;
+    }
+    const impCol = (h, exact, loose) => {
+        let i = h.findIndex(x => exact.indexOf(x) >= 0);
+        if (i >= 0) return i;
+        return h.findIndex(x => loose.some(w => x.indexOf(w) >= 0));
+    };
+    function impStamp(s) {
+        const m = String(s == null ? '' : s).match(/(\d{4}-\d{1,2}-\d{1,2})[ T](\d{1,2}:\d{2}:\d{2}(?:\.\d+)?)/);
+        if (m) {
+            const date = impDate(m[1]);
+            if (date) return { date, ts: date + ' ' + m[2] };
+        }
+        const date = impDate(String(s == null ? '' : s).replace(/[^\d\-\/\.]/g, ' ').trim());
+        return date ? { date, ts: date } : null;
+    }
+    // Ambil angka pertama dari sel yang mengandung satuan: "0.075 ETH" -> 0.075, "1.018,42 USDT" -> 1018.42
+    function impVal(s) {
+        const m = String(s == null ? '' : s).replace(/\u00a0/g, ' ').match(/[+-]?\d[\d.,]*/);
+        return m ? impNum(m[0]) : NaN;
+    }
+    function impTable(text) {
+        const lines = String(text).split(/\r?\n/);
+        const first = lines.findIndex(l => String(l).trim());
+        if (first < 0) return { items: [], used: new Set(), bad: [] };
+        let head = -1, delim = '', col = null;
+        for (let k = first; k < Math.min(lines.length, first + 10); k++) {
+            const d = impDelim(lines[k]); if (!d) continue;
+            const h = impCells(lines[k], d).map(impNorm);
+            const c = {
+                sym: impCol(h, ['symbol', 'pair', 'simbol', 'coin', 'market', '交易对'], ['symbol', 'pair', 'simbol', 'coin', 'market']),
+                side: impCol(h, ['side', 'arah', 'direction', 'posisi'], ['side', 'arah', 'direction', 'posisi']),
+                opened: impCol(h, ['opened', 'open', 'open time', 'open date', 'dibuka', 'waktu buka', 'tanggal buka', '开仓时间'], ['opened', 'open time', 'dibuka', 'waktu buka']),
+                closed: impCol(h, ['closed', 'close time', 'closing time', 'ditutup', 'waktu tutup', 'tanggal tutup', '平仓时间'], ['closed', 'close time', 'closing time', 'ditutup', 'waktu tutup', 'tanggal tutup']),
+                pnl: impCol(h, ['closing pnl', 'pnl', 'pnl penutupan', 'pnl terealisasi', 'realized pnl', 'realized profit', 'profit', '已实现盈亏'], ['pnl', 'profit', 'realis']),
+                status: impCol(h, ['status'], ['status'])
+            };
+            if (c.sym >= 0 && c.pnl >= 0 && (c.closed >= 0 || c.opened >= 0)) {
+                head = k; delim = d; col = c; break;
+            }
+        }
+        if (head < 0) return { items: [], used: new Set(), bad: [] };
+        const used = new Set([head]), items = [], bad = [];
+        for (let k = head + 1; k < lines.length; k++) {
+            if (!String(lines[k]).trim()) continue;
+            // Baris format lain yang ditempel setelah tabel (mis. 5 kolom pakai titik)
+            // bukan bagian tabel: biarkan parser lain yang membacanya.
+            if (impDelim(lines[k]) !== delim) continue;
+            const row = impCells(lines[k], delim); used.add(k);
+            const st = col.status >= 0 ? String(row[col.status] || '') : '';
+            if (st && /\bopen\b|berlangsung|未平仓/i.test(st) && !/\bclosed\b|ditutup/i.test(st)) continue;
+            let pair = String(row[col.sym] || '').replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+            if (pair && !pair.includes('USDT')) pair += 'USDT';
+            if (!/^[A-Z0-9]{4,20}$/.test(pair)) { bad.push({ i: k, msg: 'Symbol tidak valid' }); continue; }
+            const sraw = col.side >= 0 ? String(row[col.side] || '') : '';
+            let side = /^(long|buy|b)\b/i.test(sraw.trim()) ? 'Buy'
+                     : (/^(short|sell|s)\b/i.test(sraw.trim()) ? 'Sell' : '');
+            if (!side) {
+                const any = row.find(x => /^(long|short|buy|sell)$/i.test(String(x).trim()));
+                if (any) side = /^(long|buy)$/i.test(String(any).trim()) ? 'Buy' : 'Sell';
+            }
+            if (!side) { bad.push({ i: k, msg: 'Side bukan Long/Short' }); continue; }
+            const cl = impStamp(col.closed >= 0 ? row[col.closed] : '');
+            const op = impStamp(col.opened >= 0 ? row[col.opened] : '') || cl;
+            if (!cl) { bad.push({ i: k, msg: 'tanggal Closed tidak dikenali' }); continue; }
+            const pnl = impVal(row[col.pnl]);
+            if (!isFinite(pnl)) { bad.push({ i: k, msg: 'PNL bukan angka' }); continue; }
+            items.push({ opened: op.date, closed: cl.date, pair, side, pnl: impRnd(pnl, 8), _ts: cl.ts, _i: k });
+        }
+        return { items, used, bad };
+    }
     function impParse(text, existing, opt) {
         const rows = [], ok = [], errs = [], bf = []; let dup = 0;
         // Duplikat dicek hanya di lead tujuan: trade yang sama di lead lain bukan duplikat.
@@ -6162,6 +6259,18 @@
             if (isDup(key)) { dup++; rows.push({ st: 'dup', d }); return; }
             ok.push(d); rows.push({ st: 'ok', d });
         });
+        // Tabel ekspor Binance: kolom dicari dari nama header, bukan urutan.
+        const table = impTable(text);
+        table.items.forEach(d => {
+            const [y, m, dd] = d.closed.split('-');
+            const key = `${dd}/${m}/${y}|${d.pair}|${d.pnl.toFixed(4)}|${d.side}|${lid}`;
+            if (isDup(key)) { dup++; rows.push({ st: 'dup', d }); return; }
+            ok.push(d); rows.push({ st: 'ok', d });
+        });
+        table.bad.forEach(b => {
+            const m = `Baris ${b.i + 1}: ${b.msg}`;
+            errs.push(m); rows.push({ st: 'err', msg: m, _ts: '', _i: b.i });
+        });
         // Salinan Binance biasanya descending (yang terbaru paling atas). Simpan timestamp penuh
         // (tanggal + jam) di _ts, lalu urutkan ascending di akhir supaya kronologis: pagi dulu, malam belakangan.
         const tsOf = r => r && r.d ? r.d._ts : (r && r._ts);
@@ -6171,7 +6280,7 @@
         const cmpRow = (a, b) => String(tsOf(a) || '').localeCompare(String(tsOf(b) || '')) || (idxOf(b) || 0) - (idxOf(a) || 0);
         const cmpTrade = (a, b) => String(a._ts || '').localeCompare(String(b._ts || '')) || (b._i || 0) - (a._i || 0);
         text.split(/\r?\n/).forEach((ln, i) => {
-            if (!ln.trim() || blocks.used.has(i)) return;
+            if (!ln.trim() || blocks.used.has(i) || table.used.has(i)) return;
             const bfill = impBinanceFill(ln); if (bfill) { bf.push(bfill); return; }
             if (i === 0 && /^\W*(date|time|waktu|tanggal)/i.test(ln)) return;   // baris judul salinan
             const c = impSplit(ln);

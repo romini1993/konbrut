@@ -4,7 +4,7 @@ PATCH: DATA PER LEAD (trader yang diikuti)
 File hasil patch ada di folder ini:
 - code.gs       -> ganti isi Code.gs di Apps Script lalu DEPLOY ulang (ada action=renameLead baru)
 - index.html    -> ganti index.html di repo GitHub
-- sw.js         -> ganti sw.js di repo GitHub (cache version sudah naik jadi v20-editlead)
+- sw.js         -> ganti sw.js di repo GitHub (cache version sudah naik jadi v21-export)
 - manifest.json   -> ganti manifest.json di repo GitHub (nama/short_name + icon lokal 192/512).
 - icon-64.png     -> favicon tab browser (64x64).
 - icon-180.png    -> apple-touch-icon untuk home screen iOS.
@@ -34,7 +34,7 @@ Langkah pasang
 3. Apps Script -> Terapkan -> Kelola deployment -> pensil -> Versi: Versi baru -> Terapkan.
    Link /exec tidak berubah, jadi Database.js tidak perlu diedit.
 4. Push index.html dan sw.js ke GitHub (repo romini1993/sample).
-5. Buka aplikasi. Service worker v20 akan membuang cache lama otomatis.
+5. Buka aplikasi. Service worker v21 akan membuang cache lama otomatis.
 
 PENTING untuk fitur ambil dari link
 -----------------------------------
@@ -175,10 +175,22 @@ Yang berubah di aplikasi
 - Total P&L di hero tetap total SEMUA lead. Filter lead hanya mengubah daftar riwayat
   dan statistik lanjutan, supaya angka gabungan tidak membingungkan.
 
-Impor dari aplikasi Binance di HP (format B/S)
-----------------------------------------------
-- Teks riwayat ditempel langsung ke kolom Modal Impor (salin manual dari aplikasi Binance).
-- Format blok yang dikenali (sama untuk trade akun biasa maupun posisi copy trade):
+Impor: semua format diteks langsung ke Modal Impor
+---------------------------------------------------
+- TABEL EKSPOR Binance (copy dari Sheet/CSV) sekarang dibaca otomatis. Kolom dicari dari
+  NAMA headernya, jadi urutan boleh berubah. Pemisah: tab, koma, titik koma, atau spasi ganda.
+  Header yang dikenali antara lain:
+    Symbol / Pair / Simbol, Side / Arah, Status, Opened / Dibuka,
+    Closing PNL / PNL Penutupan / PNL Terealisasi / Realized Profit,
+    Closed / Ditutup. Kolom lain (Entry Price, Max. Open Interest, Avg. Close Price,
+    Closed Vol., leverage, ROI) diabaikan.
+  Contoh baris yang kebaca:
+    SKHYNIXUSDT  Isolated  Long  All Closed  2026-09-01 07:39:54.245
+    1198.66000000 USDT  0.38000000 SKHYNIX  -0.29260000 USDT
+    2026-09-02 17:37:37.858  1197.89000000 USDT  0.38000000 SKHYNIX
+  Angka bersatuan dibersihkan ("-0.29260000 USDT" -> -0.2926, "0,075 ETH" -> 0.075),
+  jam + milidetik dipakai untuk sorting ascending. Baris dengan status masih Open dilewati.
+- Format blok HP (sama untuk trade akun biasa maupun posisi copy trade):
     B SOXLUSDT              <- B = Buy/Long
     S SOXLUSDT              <- S = Sell/Short
     Perp
@@ -241,7 +253,7 @@ Ganti ikon aplikasi
    icon-64.png untuk favicon tab, icon-180.png untuk apple-touch-icon iOS.
 3. manifest.json memakai icon-192.png ("any") dan icon-512.png ("any maskable").
    Jangan pakai URL CDN /128/ lalu diklaim 512x512 — hasilnya buram dan bisa gagal install.
-4. Push juga sw.js (v20-editlead) supaya cache lama dibuang.
+4. Push juga sw.js (v21-export) supaya cache lama dibuang.
 5. Nama di bawah icon diatur lewat "short_name"; warna status bar lewat "theme_color".
 
 Pintasan Profil (Binance & Sheet)
