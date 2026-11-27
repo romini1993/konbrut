@@ -1487,6 +1487,22 @@
         </div>
     </div>
 
+    <!-- ACTION SHEET: EDIT lead (Ubah Nama / Hapus) -->
+    <div id="leadEditModal" onclick="if(event.target===this) this.classList.add('hidden')" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-4 hidden">
+        <div class="porto-card w-full max-w-sm p-3 rounded-2xl space-y-1.5 rise-in">
+            <div class="px-4 pt-1 pb-2 text-[11px] text-[var(--text-faint)]">Kelola lead <b id="leadEditNamaLabel" class="text-slate-200"></b></div>
+            <button type="button" id="leadEditNamaBtn" class="w-full text-left px-4 py-3.5 rounded-xl hover:bg-[var(--surface-2)] transition flex items-center gap-3 text-sm font-medium text-slate-200">
+                <span>✏️</span> Ubah Nama
+            </button>
+            <button type="button" id="leadEditHapusBtn" class="w-full text-left px-4 py-3.5 rounded-xl hover:bg-rose-500/10 transition flex items-center gap-3 text-sm font-medium text-rose-400">
+                <span>🗑️</span> Hapus
+            </button>
+            <button type="button" id="leadEditBatalBtn" class="w-full text-center px-4 py-3 rounded-xl bg-[var(--surface-2)] text-slate-400 text-xs font-medium mt-1">
+                Batal
+            </button>
+        </div>
+    </div>
+
     <!-- MODAL EDIT -->
     <div id="editModal" onclick="if(event.target===this) closeEditModal()" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
         <div class="porto-card w-full max-w-sm p-6 rounded-2xl shadow-2xl space-y-4 rise-in">
@@ -1927,7 +1943,8 @@
             }
         }
         // Daftar lead di popup: avatar + nama per baris. Klik baris = pilih lead.
-        // Di popup form saja ada tombol "Hapus" (edit/impor sengaja tidak, supaya tidak terpicu saat mengedit trade).
+        // Di popup form saja ada tombol "EDIT" -> menu Ubah Nama / Hapus
+        // (edit/impor sengaja tidak, supaya tidak terpicu saat mengedit trade).
         function renderLeadPickPop(cfg) {
             const pop = document.getElementById(cfg.pop); if (!pop) return;
             pop.innerHTML = LEADS.map(l =>
@@ -1936,7 +1953,7 @@
                 + leadAvatarHtml(l.id, cfg.size, l)
                 + `<span class="truncate">${escHtml(l.nama)}</span></button>`
                 + (cfg.hapus && l.id !== 'utama'
-                    ? `<button type="button" data-hapus="${escHtml(l.id)}" class="shrink-0 px-2 py-1.5 text-[10px] font-semibold text-rose-400 hover:text-rose-300" title="Hapus lead ${escHtml(l.nama)}">Hapus</button>`
+                    ? `<button type="button" data-edit="${escHtml(l.id)}" class="shrink-0 px-2 py-1.5 text-[10px] font-bold text-amber-300 hover:text-amber-200" title="Edit lead ${escHtml(l.nama)}">EDIT</button>`
                     : '')
                 + `</div>`
             ).join('');
@@ -1946,13 +1963,73 @@
                 pop.classList.add('hidden');
                 syncLeadAvatars();
             }));
-            if (cfg.hapus) pop.querySelectorAll('[data-hapus]').forEach(b => b.addEventListener('click', (ev) => {
+            if (cfg.hapus) pop.querySelectorAll('[data-edit]').forEach(b => b.addEventListener('click', (ev) => {
                 ev.stopPropagation();
                 pop.classList.add('hidden');
-                hapusLeadUI(b.dataset.hapus);
+                bukaLeadEditUI(b.dataset.edit);
             }));
         }
         function renderLeadPickPops() { LEAD_PICKERS.forEach(renderLeadPickPop); }
+
+        // EDIT lead = menu kecil "Ubah Nama" / "Hapus". Kode lead tidak diubah saat ganti nama,
+        // supaya kolom Lead di riwayat tetap mengacu ke trader yang sama.
+        function tutupLeadEditUI() {
+            const m = document.getElementById('leadEditModal');
+            if (m) m.classList.add('hidden');
+        }
+        function bukaLeadEditUI(id) {
+            const m = document.getElementById('leadEditModal'); if (!m) return;
+            const info = leadInfo(id);
+            const lbl = document.getElementById('leadEditNamaLabel');
+            if (lbl) lbl.textContent = info.nama;
+            m.dataset.lead = id;
+            m.classList.remove('hidden');
+        }
+        function ubahNamaLeadUI(id) {
+            const info = leadInfo(id);
+            tutupLeadEditUI();
+            showDialog({
+                title: 'Ubah nama lead',
+                desc: 'Kode lead tetap sama, jadi riwayat trade lama tidak berpindah. Nama baru tidak boleh sama dengan lead lain.',
+                fields: [{ id: 'nama', label: 'Nama lead', value: info.nama, placeholder: 'Nama trader', max: 30 }],
+                okText: 'Simpan', cancelText: 'Batal',
+                onConfirm: async (v, api) => {
+                    const nama = String((v && v.nama) || '').trim();
+                    if (!nama) { api.setError('Nama lead wajib diisi'); return false; }
+                    try {
+                        const payload = { action: 'renameLead', id: id, nama: nama, rid: newRid() };
+                        if (SESSION && SESSION.token) payload.token = SESSION.token;
+                        const j = await acctPost(payload);
+                        if (ACCOUNT_MODE && j && j.error === 'auth') { checkAuthError(j); return false; }
+                        if (!j || j.status !== 'success') { api.setError((j && j.msg) || 'Gagal mengubah nama lead'); return false; }
+                        if (cachedGlobalResponse && typeof cachedGlobalResponse === 'object') {
+                            cachedGlobalResponse.leads = j.leads;
+                            cachedGlobalResponse.leadsArsip = j.arsip || [];
+                            try { localStorage.setItem(CACHE_KEY, JSON.stringify(cachedGlobalResponse)); } catch (e) {}
+                        }
+                        applyLeadOptions({ leads: j.leads, leadsArsip: j.arsip || [] });
+                        rememberLead(currentLeadId);
+                        api.close();
+                        renderTradeListOnly();
+                        showToast('Nama lead diubah jadi "' + nama + '"', 'success');
+                        return true;
+                    } catch (e) {
+                        api.setError('Gagal menghubungi Sheet: ' + (e && e.message ? e.message : 'coba lagi'));
+                        return false;
+                    }
+                }
+            });
+        }
+        (function wireLeadEditUI() {
+            const m = document.getElementById('leadEditModal');
+            const namaBtn = document.getElementById('leadEditNamaBtn');
+            const hapusBtn = document.getElementById('leadEditHapusBtn');
+            const batalBtn = document.getElementById('leadEditBatalBtn');
+            const leadId = () => m ? m.dataset.lead : '';
+            if (namaBtn) namaBtn.addEventListener('click', () => { const id = leadId(); if (id) ubahNamaLeadUI(id); });
+            if (hapusBtn) hapusBtn.addEventListener('click', () => { const id = leadId(); if (id) { tutupLeadEditUI(); hapusLeadUI(id); } });
+            if (batalBtn) batalBtn.addEventListener('click', tutupLeadEditUI);
+        })();
 
         // Hapus lead = diminta konfirmasi dulu. Backend hanya menonaktifkan barisnya,
         // jadi riwayat trade lama tetap punya nama + foto lead yang sama.

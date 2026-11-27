@@ -2,9 +2,9 @@ PATCH: DATA PER LEAD (trader yang diikuti)
 ==========================================
 
 File hasil patch ada di folder ini:
-- code.gs       -> ganti isi Code.gs di Apps Script
+- code.gs       -> ganti isi Code.gs di Apps Script lalu DEPLOY ulang (ada action=renameLead baru)
 - index.html    -> ganti index.html di repo GitHub
-- sw.js         -> ganti sw.js di repo GitHub (cache version sudah naik jadi v19-avatar)
+- sw.js         -> ganti sw.js di repo GitHub (cache version sudah naik jadi v20-editlead)
 - manifest.json   -> ganti manifest.json di repo GitHub (nama/short_name + icon lokal 192/512).
 - icon-64.png     -> favicon tab browser (64x64).
 - icon-180.png    -> apple-touch-icon untuk home screen iOS.
@@ -34,7 +34,7 @@ Langkah pasang
 3. Apps Script -> Terapkan -> Kelola deployment -> pensil -> Versi: Versi baru -> Terapkan.
    Link /exec tidak berubah, jadi Database.js tidak perlu diedit.
 4. Push index.html dan sw.js ke GitHub (repo romini1993/sample).
-5. Buka aplikasi. Service worker v19 akan membuang cache lama otomatis.
+5. Buka aplikasi. Service worker v20 akan membuang cache lama otomatis.
 
 PENTING untuk fitur ambil dari link
 -----------------------------------
@@ -205,6 +205,18 @@ Ukuran foto lead
   mengikuti warna lead). Nama lead dipindah dari badge kecil 8px ke baris PROFIT/LOSS dengan
   teks 10px, jadi foto tidak lagi "nempel" di badge yang sempit.
 
+Edit lead yang diikuti
+----------------------
+- Di popup pemilih lead (form Tambah Trade), tombol "Hapus" diganti "EDIT" (kecuali Lead Utama).
+- Tekan EDIT -> muncul menu "Ubah Nama" dan "Hapus".
+  * Ubah Nama: isi nama baru (maks. 30 karakter). KODE lead sengaja tidak diubah supaya
+    semua trade lama yang memakai lead itu tetap terbaca / tidak berpindah lead.
+    Nama baru tidak boleh bentrok dengan nama lead lain.
+  * Hapus: tetap seperti sebelumnya -> lead dinonaktifkan, trade lama masih tersimpan.
+- Perubahan nama langsung tersinkron ke dropdown form/edit/impor/filter dan kartu Riwayat Trade.
+- Backend: action POST baru `renameLead` -> `gantiNamaLead_()` di Code.gs (kolom B saja).
+  Akun gabungan tetap read-only. Karena code.gs berubah, Apps Script WAJIB di-deploy ulang.
+
 Perubahan Sheet (tambahan saja, tidak menggeser yang lama)
 ----------------------------------------------------------
 Kolom A-N tetap seperti sebelumnya. Kolom baru:
@@ -229,7 +241,7 @@ Ganti ikon aplikasi
    icon-64.png untuk favicon tab, icon-180.png untuk apple-touch-icon iOS.
 3. manifest.json memakai icon-192.png ("any") dan icon-512.png ("any maskable").
    Jangan pakai URL CDN /128/ lalu diklaim 512x512 — hasilnya buram dan bisa gagal install.
-4. Push juga sw.js (v19-avatar) supaya cache lama dibuang.
+4. Push juga sw.js (v20-editlead) supaya cache lama dibuang.
 5. Nama di bawah icon diatur lewat "short_name"; warna status bar lewat "theme_color".
 
 Pintasan Profil (Binance & Sheet)
