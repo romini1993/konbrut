@@ -1298,6 +1298,13 @@
 
             <!-- WIDGET TAMBAHAN (khusus desktop) -->
             <div id="widgetsCol" class="hidden lg:flex lg:flex-col lg:flex-1 lg:min-h-0 space-y-2.5">
+                <!-- HP: tombol header Impor berdiri sendiri di paling atas halaman Statistik -->
+                <div id="statsImportHeader">
+                    <button type="button" id="importHeaderBtn" aria-label="Buka impor massal">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v11"/><path d="m8 10 4 4 4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+                        <span>Impor massal</span>
+                    </button>
+                </div>
                 <div id="statsToolbar" class="porto-card rounded-2xl">
                     <div class="adv-head">
                         <div class="flex items-center gap-2"><span class="section-dot"></span><h2 class="section-label">Statistik lanjutan</h2></div>
@@ -1413,12 +1420,12 @@
                             <button type="button" id="fltReorder" aria-pressed="false"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="4,5.5 7,2.5 10,5.5"/><polyline points="4,8.5 7,11.5 10,8.5"/></svg><span>Atur urutan</span></button>
                         </div>
                         <div id="mvHint" class="hidden mt-1.5 text-[10px] leading-snug text-[var(--text-dim)]">Geser ▲ ▼ untuk menyamakan urutan trade di hari yang sama dengan Binance. Trade tidak bisa pindah ke hari lain.</div>
-                        <div id="fltDatePop" class="hidden absolute right-0 top-full mt-1 z-20 porto-card p-2.5 rounded-xl shadow-lg space-y-1.5" style="width:220px">
-                            <div class="text-[10px] text-slate-400">Closed dari</div>
-                            <input id="fltFrom" type="date" class="porto-input rounded-lg px-2 text-xs w-full" style="height:32px;color-scheme:dark">
-                            <div class="text-[10px] text-slate-400">Closed sampai</div>
-                            <input id="fltTo" type="date" class="porto-input rounded-lg px-2 text-xs w-full" style="height:32px;color-scheme:dark">
-                            <button type="button" id="fltDateClear" class="w-full text-center py-1.5 rounded-lg bg-[var(--surface-2)] text-[11px] text-slate-300">Hapus tanggal</button>
+                        <div id="fltDatePop" class="hidden absolute right-0 top-full mt-1 porto-card rounded-xl shadow-lg" style="width:min(320px, calc(100vw - 24px)); padding:10px 8px 8px; z-index:40">
+                            <div class="rk-head"><span>Pilih rentang tanggal</span><button type="button" class="rk-x" aria-label="Tutup kalender filter">×</button></div>
+                            <input id="fltCal" type="text" tabindex="-1" aria-hidden="true">
+                            <div class="rk-foot"><div class="rk-foot-l"><span id="fltDateLabel">Semua tanggal</span></div><button type="button" id="fltDateClear">Hapus tanggal</button></div>
+                            <input id="fltFrom" type="hidden">
+                            <input id="fltTo" type="hidden">
                         </div>
                     </div>
                     <div id="loading" class="text-center text-xs text-[var(--text-faint)] py-6" style="display:none;">Memuat data...</div>
@@ -5983,15 +5990,7 @@
     <div id="importModal" style="z-index:95" onclick="if(event.target===this && !window.__impBusy) this.classList.add('hidden')" class="fixed inset-2 sm:inset-0 bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4 hidden">
         <div class="porto-card w-full max-w-3xl p-4 sm:p-5 rounded-2xl space-y-3 rise-in max-h-[92vh] overflow-y-auto custom-scroll">
             <h2 class="section-label">Impor massal</h2>
-            <div class="grid grid-cols-2 gap-2">
-                <div class="relative"><input id="impO" type="text" inputmode="numeric" maxlength="10" placeholder="Opened" class="porto-input rounded-lg pl-3 pr-9 text-[12px] sm:text-[13px] w-full" style="height:38px"><button type="button" data-impcal="impO" class="absolute right-1.5 top-1/2 -translate-y-1/2 text-[15px] leading-none px-1" aria-label="Pilih tanggal Opened">&#128197;</button></div>
-                <div class="relative"><input id="impC" type="text" inputmode="numeric" maxlength="10" placeholder="Closed" class="porto-input rounded-lg pl-3 pr-9 text-[12px] sm:text-[13px] w-full" style="height:38px"><button type="button" data-impcal="impC" class="absolute right-1.5 top-1/2 -translate-y-1/2 text-[15px] leading-none px-1" aria-label="Pilih tanggal Closed">&#128197;</button></div>
-            </div>
-            <div class="grid grid-cols-3 gap-2">
-                <input id="impPair" type="text" placeholder="Pair" autocomplete="off" class="porto-input rounded-lg px-3 text-[12px] sm:text-[13px] uppercase min-w-0" style="height:38px">
-                <select id="impSide" class="porto-input rounded-lg px-2 text-[12px] sm:text-[13px]" style="height:38px"><option value="Buy">Buy</option><option value="Sell">Sell</option></select>
-                <input id="impPnl" type="text" placeholder="PNL" autocomplete="off" class="porto-input rounded-lg px-3 text-[12px] sm:text-[13px] min-w-0" style="height:38px">
-            </div>
+            <p class="text-[11px] text-[var(--text-faint)] leading-relaxed">Pilih lead tujuan, lalu tempel data Binance di kolom smart input. Tidak perlu mengisi Opened/Closed/Pair/Side/PNL satu per satu.</p>
             <div class="relative flex-1 min-w-0">
                 <button type="button" id="impLeadBtn" class="w-full porto-input rounded-lg px-3 text-[12px] sm:text-[13px] flex items-center gap-1.5 text-left" style="height:38px" title="Pilih lead tujuan" aria-label="Pilih lead tujuan" aria-haspopup="listbox">
                     <span id="impLeadBtnBody" class="flex-1 min-w-0 flex items-center gap-1.5 overflow-hidden"></span>
@@ -6000,7 +5999,7 @@
                 <select id="impLead" class="hidden"><option value="utama">Lead: Lead Utama</option></select>
                 <div id="impLeadPop" class="hidden absolute left-0 top-full mt-1 z-[60] w-full max-h-48 overflow-y-auto custom-scroll porto-card rounded-xl p-1 shadow-xl"></div>
             </div>
-            <button type="button" id="impAdd" class="w-full px-3 py-2.5 rounded-xl bg-[var(--surface-2)] border border-[var(--border)] text-[13px] font-semibold text-amber-400">+ Tambah ke daftar</button>
+            <label for="impText" class="block text-[10px] font-semibold uppercase tracking-wide text-[var(--text-faint)]">Smart input</label>
             <textarea id="impText" rows="5" class="w-full porto-input rounded-xl p-3 text-[12px] sm:text-[13px] num" placeholder="Tempel tabel ekspor Binance (ada header Symbol/Side/Opened/Closing PNL/Closed), blok 'B SOXLUSDT', riwayat Open/Close, atau baris 5 kolom"></textarea>
             <label class="flex items-center gap-2 text-[11px] text-[var(--text-faint)]"><input id="impFee" type="checkbox"> Riwayat Binance: kurangi fee dari PNL (kalau dimatikan, PNL = Realized Profit)</label>
             <p class="text-[11px] text-[var(--text-faint)] leading-relaxed">Tabel ekspor (Symbol, Side, Opened, Closing PNL, Closed, dst.) dibaca dari <b>nama kolom</b>, urutan bebas, dipisah tab/koma/titik koma. Nilai bersatuan (0,075 ETH) &amp; jam bermilidetik didukung. Format HP: blok <b>B</b> (Buy/Long) / <b>S</b> (Sell/Short) + symbol, dengan PNL &amp; tanggal Dibuka/Ditutup. Koma desimal otomatis jadi titik (1.018,41792 → 1018.41792). Format lama tetap jalan: Open/Close Long/Short atau 5 kolom.</p>
@@ -6046,13 +6045,6 @@
             if (dt.getFullYear() === y && dt.getMonth() === m - 1 && dt.getDate() === d) return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
         }
         return null;
-    }
-    // ketikan di kolom tanggal: 25102026 -> 25/10/2026 (juga menerima tempelan 2026-10-25)
-    function impTyped(raw) {
-        raw = String(raw); const m = raw.trim().match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
-        if (m) return `${m[3].padStart(2, '0')}/${m[2].padStart(2, '0')}/${m[1]}`;
-        const d = raw.replace(/\D/g, '').slice(0, 8);
-        return d.length <= 2 ? d : (d.length <= 4 ? `${d.slice(0, 2)}/${d.slice(2)}` : `${d.slice(0, 2)}/${d.slice(2, 4)}/${d.slice(4)}`);
     }
     const impShow = iso => iso.split('-').reverse().join('/');
     // Pemisah kolom: tab > titik koma > koma (kalau pas 5 kolom) > titik. Kalau titik: 4 titik pertama = pemisah kolom, sisanya = PNL (jadi titik di PNL = desimal).
@@ -6344,7 +6336,7 @@
             const p = _p(t); if (F.res === 'profit' && p < 0) return false; if (F.res === 'loss' && p >= 0) return false;
             const k = _k(t.closed);
             if (F.from && k < new Date(F.from + 'T00:00:00').getTime()) return false;
-            if (F.to && k > new Date(F.to + 'T00:00:00').getTime()) return false;
+            if (F.to && k > new Date(F.to + 'T23:59:59.999').getTime()) return false;   // tanggal sampai = seharian penuh
             return true;
         }
         const active = () => !!(F.q || F.lead || F.side || F.res || F.from || F.to);
@@ -6460,12 +6452,62 @@
             if (obs) obs.observe(list, { childList: true });
         }
         obs = new MutationObserver(() => { if (!riwayatRendering) apply(); }); obs.observe(list, { childList: true });
-        [['fltQ', 'q', v => v.trim().toUpperCase()], ['fltLead', 'lead', v => v], ['fltSide', 'side', v => v], ['fltRes', 'res', v => v], ['fltFrom', 'from', v => v], ['fltTo', 'to', v => v]]
+        [['fltQ', 'q', v => v.trim().toUpperCase()], ['fltLead', 'lead', v => v], ['fltSide', 'side', v => v], ['fltRes', 'res', v => v]]
             .forEach(([id, key, fn]) => { const e = $(id); const h = () => { F[key] = fn(e.value); apply(); }; e.addEventListener('input', h); e.addEventListener('change', h); });
-        const clearDates = () => { ['fltFrom', 'fltTo'].forEach(id => { $(id).value = ''; }); F.from = ''; F.to = ''; apply(); };
-        $('fltReset').onclick = () => { ['fltQ', 'fltLead', 'fltSide', 'fltRes', 'fltFrom', 'fltTo'].forEach(id => { $(id).value = ''; }); Object.keys(F).forEach(k => { F[k] = ''; }); $('fltDatePop').classList.add('hidden'); syncLeadAvatars(); apply(); };
+
+        // Filter tanggal Riwayat: kalender rentang inline sama seperti di header Rekap.
+        // Pilih tanggal pertama (mulai) lalu tanggal kedua (sampai); F.from/F.to tetap dipakai match().
+        let fltFp = null;
+        const fltPad = n => String(n).padStart(2, '0');
+        const fltIso = d => d.getFullYear() + '-' + fltPad(d.getMonth() + 1) + '-' + fltPad(d.getDate());
+        const fltDMY = s => { const p = String(s || '').split('-'); return p.length === 3 ? fltPad(+p[2]) + '/' + fltPad(+p[1]) + '/' + p[0] : ''; };
+        function paintFltDate() {
+            const lbl = $('fltDateLabel'); if (!lbl) return;
+            lbl.textContent = !F.from ? 'Semua tanggal'
+                : (F.from === F.to ? fltDMY(F.from) : fltDMY(F.from) + ' – ' + fltDMY(F.to));
+        }
+        function setFltDates(dates) {
+            if (!dates || !dates.length) { F.from = F.to = ''; }
+            else {
+                const a = dates[0], b = dates[dates.length - 1];
+                F.from = fltIso(new Date(a.getFullYear(), a.getMonth(), a.getDate()));
+                F.to = fltIso(new Date(b.getFullYear(), b.getMonth(), b.getDate()));
+            }
+            $('fltFrom').value = F.from; $('fltTo').value = F.to;
+            paintFltDate(); apply();
+        }
+        const clearDates = () => { if (fltFp) { try { fltFp.clear(false); } catch (e) {} } setFltDates([]); };
+        $('fltReset').onclick = () => {
+            ['fltQ', 'fltLead', 'fltSide', 'fltRes', 'fltFrom', 'fltTo'].forEach(id => { $(id).value = ''; });
+            Object.keys(F).forEach(k => { F[k] = ''; });
+            if (fltFp) { try { fltFp.clear(false); } catch (e) {} }
+            paintFltDate(); $('fltDatePop').classList.add('hidden'); syncLeadAvatars(); apply();
+        };
         $('fltDateClear').onclick = clearDates;
-        $('fltDateBtn').onclick = e => { e.stopPropagation(); $('fltDatePop').classList.toggle('hidden'); };
+        $('fltDatePop').querySelector('.rk-x').onclick = () => $('fltDatePop').classList.add('hidden');
+        $('fltDateBtn').onclick = e => {
+            e.stopPropagation();
+            const pop = $('fltDatePop');
+            pop.classList.toggle('hidden');
+            if (pop.classList.contains('hidden') || fltFp) return;
+            if (typeof flatpickr !== 'function') { pop.classList.add('hidden'); showToast('Kalender tidak termuat, coba muat ulang halaman', 'error'); return; }
+            fltFp = flatpickr($('fltCal'), {
+                mode: 'range', inline: true, dateFormat: 'Y-m-d', disableMobile: true,
+                locale: {
+                    firstDayOfWeek: 1,
+                    weekdays: { shorthand: ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'], longhand: ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'] },
+                    months: {
+                        shorthand: ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'],
+                        longhand: ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
+                    }
+                },
+                onChange: dates => {
+                    setFltDates(dates);
+                    if (dates.length === 2) setTimeout(() => pop.classList.add('hidden'), 350);
+                }
+            });
+            if (F.from) { try { fltFp.setDate([F.from, F.to || F.from], false); } catch (err) {} }
+        };
         document.addEventListener('click', e => { const pop = $('fltDatePop'); if (!pop.classList.contains('hidden') && !pop.contains(e.target)) pop.classList.add('hidden'); });
 
         const f2 = v => (v >= 0 ? '+' : '') + v.toFixed(2);
@@ -6513,23 +6555,9 @@
         const openImport = () => { applyLeadOptions(cachedGlobalResponse); $('importModal').classList.remove('hidden'); refresh(); };
         $('impText').addEventListener('input', refresh); $('impFee').addEventListener('change', refresh); $('impLead').addEventListener('change', refresh);
         $('impClose').onclick = () => { if (!window.__impBusy) $('importModal').classList.add('hidden'); };
-        // isi manual: tanggal otomatis jadi dd/mm/yyyy saat diketik; kalender (flatpickr, sudah dimuat aplikasi) dibuka lewat ikon
-        const FPS = {};
-        ['impO', 'impC'].forEach(id => {
-            const e = $(id);
-            e.addEventListener('input', () => { const v = impTyped(e.value); if (v !== e.value) e.value = v; });
-            if (typeof flatpickr === 'function') FPS[id] = flatpickr(e, { dateFormat: 'd/m/Y', allowInput: true, clickOpens: false, disableMobile: true });
-        });
-        document.querySelectorAll('[data-impcal]').forEach(b => { b.onclick = ev => { ev.preventDefault(); ev.stopPropagation(); const f = FPS[b.dataset.impcal]; if (f) f.open(); else showToast('Kalender tidak termuat, ketik tanggalnya manual', 'error'); }; });
-        $('impPair').addEventListener('blur', () => { const v = $('impPair').value.trim().toUpperCase(); $('impPair').value = v && !v.includes('USDT') ? v + 'USDT' : v; });
-        $('impAdd').onclick = () => {
-            let o = $('impO').value, c = $('impC').value; if (!o) o = c; if (!c) c = o;
-            const line = `${o}, ${c}, ${$('impPair').value.trim()}, ${$('impSide').value}, ${$('impPnl').value.trim().replace(',', '.')}`;
-            const chk = impParse(line, []);
-            if (!chk.ok.length) { showToast(chk.errs.length ? chk.errs[0].replace(/^Baris 1: /, '') : 'Data belum lengkap', 'error'); return; }
-            const ta = $('impText'); ta.value += (ta.value && !ta.value.endsWith('\n') ? '\n' : '') + line;
-            $('impPair').value = ''; $('impPnl').value = ''; refresh(); $('impPair').focus();
-        };
+        // HP: tombol header Impor berdiri sendiri, langsung membuka modal yang sama dengan tombol lama
+        const hdrBtn = $('importHeaderBtn');
+        if (hdrBtn) hdrBtn.onclick = e => { e.stopPropagation(); openImport(); };
         $('impRun').onclick = async () => {
             if (!imp || !imp.ok.length || window.__impBusy) return;
             window.__impBusy = true; $('impRun').disabled = true;
@@ -6646,10 +6674,9 @@
                 const b = $('confirmEditBtn'); if (b && !b.disabled) b.click();
                 return;
             }
-            // impor massal: Enter di kolom isian manual = Tambah ke daftar; Ctrl+Enter di kotak tempel = Impor
+            // impor massal: Ctrl+Enter di smart input = Impor; Enter biasa tetap bikin baris baru
             if (isOpen('importModal') && $('importModal').contains(t)) {
-                if (tag === 'TEXTAREA') { if (e.ctrlKey || e.metaKey) { e.preventDefault(); const r = $('impRun'); if (r && !r.disabled) r.click(); } return; }
-                if (tag === 'INPUT' && t.type !== 'checkbox') { e.preventDefault(); $('impAdd').click(); }
+                if (tag === 'TEXTAREA' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); const r = $('impRun'); if (r && !r.disabled) r.click(); }
             }
         }, true);
     })();
@@ -6772,6 +6799,13 @@
     #widgetsCol .adv-orig { display: none !important; }
     /* Popup pilih lead di Riwayat: nama panjang (China/Korea/Jepang) tidak boleh kepotong */
     #fltLeadPop { width: min(300px, calc(100vw - 32px)) !important; max-height: 280px !important; }
+    #statsImportHeader { display: none; }                         /* HP Statistik saja; desktop tidak berubah */
+    #statsImportHeader button {
+        width: 100%; height: 40px; display: flex; align-items: center; justify-content: center; gap: 8px;
+        border: 1px solid var(--border); border-radius: var(--r-box); background: var(--surface-2);
+        color: var(--text); font-size: 12px; font-weight: 700; cursor: pointer;
+    }
+    #statsImportHeader button svg { color: var(--accent-bright); }
     #statsSideCard { display: none !important; }                  /* di luar Statistik tetap tersembunyi */
     body[data-view="stats"] #statsSideCard { display: block !important; }
 
@@ -6879,6 +6913,13 @@
     /* ═════════ HP (< 768px) ═════════ */
     @media (max-width: 767px) {
         body[data-view="stats"] #tabBar, body[data-view="profil"] #tabBar { display: none !important; }
+        body[data-view="stats"] #statsToolbar .adv-head button { display: none !important; }  /* Impor lama diganti tombol header */
+        /* HP Statistik: Impor → Lead & sorotan → Statistik lanjutan → Statistik Cepat → Kalender */
+        body[data-view="stats"] #statsImportHeader { display: block; order: -2; }
+        body[data-view="stats"] #statsSideCard { order: -1; }
+        body[data-view="stats"] #statsToolbar { order: 0; }
+        body[data-view="stats"] #quickStatsCard { order: 1; }
+        body[data-view="stats"] #calendarCard { order: 2; }
 
         body[data-view="rekap"] #tabBar, body[data-view="riwayat"] #tabBar { top: env(safe-area-inset-top, 0px) !important; }
 
@@ -7060,6 +7101,18 @@
     #rekapRange #rkTotal.g, #rekapSum .g, #riwayatSum .g { color: var(--profit); }
     #rekapRange #rkTotal.r, #rekapSum .r, #riwayatSum .r { color: var(--loss); }
     #rekapRange .flatpickr-calendar { touch-action: pan-y; }
+    /* Riwayat: kalender filter rentang memakai pola yang sama dengan header Rekap */
+    #fltDatePop .rk-head { display: flex; align-items: center; justify-content: space-between; padding: 2px 6px 6px; font-size: 12px; font-weight: 600; color: var(--text-dim); }
+    #fltDatePop .rk-x { width: 28px; height: 28px; border-radius: 50%; border: 0; background: var(--surface-2); color: var(--text-dim); font-size: 18px !important; line-height: 1; cursor: pointer; }
+    #fltDatePop #fltCal { position: absolute; width: 0; height: 0; opacity: 0; pointer-events: none; border: 0; padding: 0; }
+    #fltDatePop .flatpickr-calendar.inline { margin: 0 auto; box-shadow: none; background: transparent; border: 0; }
+    #fltDatePop .flatpickr-day.startRange, #fltDatePop .flatpickr-day.endRange, #fltDatePop .flatpickr-day.startRange:hover, #fltDatePop .flatpickr-day.endRange:hover { background: var(--accent); border-color: var(--accent); color: #fff; }
+    #fltDatePop .flatpickr-day.inRange { background: rgba(89, 96, 229, .22); border-color: transparent; color: var(--text); box-shadow: -5px 0 0 rgba(89, 96, 229, .22), 5px 0 0 rgba(89, 96, 229, .22); }
+    #fltDatePop .flatpickr-calendar { touch-action: pan-y; }
+    #fltDatePop .rk-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 6px 2px; border-top: 1px solid var(--border-soft); margin-top: 6px; }
+    #fltDatePop .rk-foot-l { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+    #fltDatePop #fltDateLabel { font-size: 11px; color: var(--text-dim); }
+    #fltDatePop #fltDateClear { font-size: 11px !important; font-weight: 600; padding: 6px 12px; border-radius: 9px; border: 0; background: var(--surface-2); color: var(--accent-bright); cursor: pointer; }
     #rekapSum, #riwayatSum { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 0 0 6px; padding: 10px 12px; border-radius: 14px; background: var(--surface-2); border: 1px solid var(--border); }
     #rekapSum.hidden, #riwayatSum.hidden { display: none; }
     #rekapSum .rs-k, #riwayatSum .rs-k { font-size: 12px; font-weight: 600; color: var(--text); }
