@@ -2090,9 +2090,9 @@
             const all = [{ id: '', nama: 'Semua lead', warna: '#94a3b8', foto: '' }].concat(LEADS)
                 .concat(LEADS_ARSIP.map(l => Object.assign({}, l, { nama: l.nama + ' (dihapus)' })));
             pop.innerHTML = all.map(l =>
-                `<button type="button" data-lead="${escHtml(l.id)}" class="w-full flex items-center gap-2.5 px-2 py-2 text-[12px] text-left text-slate-200 hover:bg-[var(--surface-2)] rounded-lg">`
+                `<button type="button" data-lead="${escHtml(l.id)}" class="w-full flex items-start gap-2.5 px-2 py-2 text-[12px] text-left text-slate-200 hover:bg-[var(--surface-2)] rounded-lg">`
                 + leadAvatarHtml(l.id, 26, l)
-                + `<span class="truncate">${escHtml(l.nama)}</span></button>`
+                + `<span class="min-w-0 break-words leading-snug">${escHtml(l.nama)}</span></button>`
             ).join('');
             pop.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
                 const sel = document.getElementById('fltLead');
@@ -6770,6 +6770,8 @@
     .adv-box .v.r { color: var(--loss); }
     .adv-empty { grid-column: 1 / -1; text-align: center; font-size: 12px; color: var(--text-faint); padding: 16px 0; }
     #widgetsCol .adv-orig { display: none !important; }
+    /* Popup pilih lead di Riwayat: nama panjang (China/Korea/Jepang) tidak boleh kepotong */
+    #fltLeadPop { width: min(300px, calc(100vw - 32px)) !important; max-height: 280px !important; }
     #statsSideCard { display: none !important; }                  /* di luar Statistik tetap tersembunyi */
     body[data-view="stats"] #statsSideCard { display: block !important; }
 
