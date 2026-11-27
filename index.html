@@ -6349,6 +6349,32 @@
         }
         const active = () => !!(F.q || F.lead || F.side || F.res || F.from || F.to);
         const list = $('tradeList'); let obs = null, riwayatRendering = false, riwayatExpanded = null;
+        const rSum = document.createElement('div'); rSum.id = 'riwayatSum'; rSum.className = 'hidden';
+        if (list && list.parentNode) list.parentNode.insertBefore(rSum, list);
+
+        // Ringkasan total ala #rekapSum, muncul di Riwayat saat tampilan grup aktif.
+        function paintRiwayatSum(rows) {
+            if (!rSum) return;
+            if (!groupingOn() || !rows.length) { rSum.classList.add('hidden'); rSum.innerHTML = ''; return; }
+            const keys = Array.from(new Set(rows.map(groupKey).filter(Boolean)));
+            const openedMode = typeof histSortMode !== 'undefined' && histSortMode === 'opened';
+            const dmy = k => /^\d{2}\/\d{2}\/\d{4}$/.test(k) ? k : (typeof fmtDMY === 'function' ? fmtDMY(k) : k);
+            const sorted = keys.slice().sort((a, b) => {
+                const da = openedMode ? parseOpenedDate(a) : parseClosedDate(a);
+                const db = openedMode ? parseOpenedDate(b) : parseClosedDate(b);
+                return (da && db) ? da - db : String(a).localeCompare(String(b));
+            });
+            const total = rows.reduce((s, t) => s + (_p(t) || 0), 0);
+            const kurs = Number(currentKursIdr) || 0;
+            const rp = (total < 0 ? '-' : '') + (typeof formatRupiah === 'function' ? formatRupiah(Math.abs(total) * kurs) : '');
+            const first = dmy(sorted[0] || ''), last = dmy(sorted[sorted.length - 1] || '');
+            const label = first && last && first !== last ? first + ' – ' + last : first;
+            rSum.innerHTML = '<div class="rs-left"><div class="rs-k">Total ' + label + '</div><div class="rs-s">' +
+                sorted.length + ' hari · ' + rows.length + ' trade</div></div>' +
+                '<div class="rs-right"><div class="rs-v ' + (total >= 0 ? 'g' : 'r') + '">' +
+                (total >= 0 ? '+' : '') + total.toFixed(2) + ' USDT</div><div class="rs-r">≈ ' + rp + '</div></div>';
+            rSum.classList.remove('hidden');
+        }
 
         // Riwayat tampil "layaknya Rekap" (baris harian yang bisa dibuka) kalau ada filter ATAU urutan aktif.
         const groupingOn = () => active() || (typeof histSortMode !== 'undefined' && histSortMode !== 'closed');
@@ -6358,6 +6384,7 @@
             riwayatRendering = true;
             try {
                 const rows = hist().filter(match);
+                paintRiwayatSum(rows);
                 list.innerHTML = '';
                 if (!rows.length) {
                     list.innerHTML = '<p class="text-xs text-[var(--text-faint)] text-center py-4">Belum ada data trading.</p>';
@@ -6743,7 +6770,8 @@
     .adv-box .v.r { color: var(--loss); }
     .adv-empty { grid-column: 1 / -1; text-align: center; font-size: 12px; color: var(--text-faint); padding: 16px 0; }
     #widgetsCol .adv-orig { display: none !important; }
-    #statsSideCard { display: none !important; }   /* hanya dipakai di Statistik desktop */
+    #statsSideCard { display: none !important; }                  /* di luar Statistik tetap tersembunyi */
+    body[data-view="stats"] #statsSideCard { display: block !important; }
 
     /* Statistik: teks abu-abu dipertegas (sebelumnya terlalu gelap) */
     body[data-view="stats"] #widgetsCol { --text-dim: #c0c8d8; --text-faint: #a1aabd; }
@@ -6952,16 +6980,17 @@
     @media (min-width: 1024px) {
         #advInline { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 
-        /* Statistik: kalender tetap di tengah, sisi kiri/kanan diisi kartu ringkas supaya tidak kosong */
+        /* Statistik desktop: "Lead & sorotan" di kiri bawah (lebar), kalender digeser ke kanan sampai ujung.
+           Ukuran kalender sengaja tetap (maks. 760px) supaya kotak tanggalnya tidak berubah. */
         body[data-view="stats"] #widgetsCol {
             display: grid !important;
-            grid-template-columns: minmax(220px, 1fr) minmax(0, 760px) minmax(220px, 1fr);
-            grid-template-areas: "adv adv adv" "quick cal side";
+            grid-template-columns: minmax(0, 1fr) minmax(0, 760px);
+            grid-template-areas: "adv adv" "quick cal" "side cal";
             gap: 10px; align-items: start;
         }
         body[data-view="stats"] #statsToolbar { grid-area: adv; }
         body[data-view="stats"] #quickStatsCard { grid-area: quick; }
-        body[data-view="stats"] #calendarCard { grid-area: cal; }
+        body[data-view="stats"] #calendarCard { grid-area: cal; justify-self: end; width: 100%; }
         body[data-view="stats"] #statsSideCard { grid-area: side; display: block !important; }
         body[data-view="stats"] #heatmapCalendar { max-width: none; margin-top: 0; }
     }
@@ -7026,16 +7055,16 @@
     #rekapRange #rkClear { font-size: 11px !important; font-weight: 600; padding: 6px 12px; border-radius: 9px; border: 0; background: var(--surface-2); color: var(--accent-bright); cursor: pointer; }
     #rekapRange .rk-foot-l { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
     #rekapRange #rkTotal { font-family: 'Space Grotesk', sans-serif; font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
-    #rekapRange #rkTotal.g, #rekapSum .g { color: var(--profit); }
-    #rekapRange #rkTotal.r, #rekapSum .r { color: var(--loss); }
+    #rekapRange #rkTotal.g, #rekapSum .g, #riwayatSum .g { color: var(--profit); }
+    #rekapRange #rkTotal.r, #rekapSum .r, #riwayatSum .r { color: var(--loss); }
     #rekapRange .flatpickr-calendar { touch-action: pan-y; }
-    #rekapSum { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 0 0 6px; padding: 10px 12px; border-radius: 14px; background: var(--surface-2); border: 1px solid var(--border); }
-    #rekapSum.hidden { display: none; }
-    #rekapSum .rs-k { font-size: 12px; font-weight: 600; color: var(--text); }
-    #rekapSum .rs-s { margin-top: 3px; font-size: 10.5px; color: var(--text-dim); }
-    #rekapSum .rs-right { text-align: right; }
-    #rekapSum .rs-v { font-family: 'Space Grotesk', sans-serif; font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; }
-    #rekapSum .rs-r { margin-top: 2px; font-size: 10.5px; color: var(--text-dim); }
+    #rekapSum, #riwayatSum { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 0 0 6px; padding: 10px 12px; border-radius: 14px; background: var(--surface-2); border: 1px solid var(--border); }
+    #rekapSum.hidden, #riwayatSum.hidden { display: none; }
+    #rekapSum .rs-k, #riwayatSum .rs-k { font-size: 12px; font-weight: 600; color: var(--text); }
+    #rekapSum .rs-s, #riwayatSum .rs-s { margin-top: 3px; font-size: 10.5px; color: var(--text-dim); }
+    #rekapSum .rs-right, #riwayatSum .rs-right { text-align: right; }
+    #rekapSum .rs-v, #riwayatSum .rs-v { font-family: 'Space Grotesk', sans-serif; font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; }
+    #rekapSum .rs-r, #riwayatSum .rs-r { margin-top: 2px; font-size: 10.5px; color: var(--text-dim); }
     #rekapEmpty { font-size: 12px; color: var(--text-faint); text-align: center; padding: 22px 8px; }
 
     /* ── tombol + mengambang (gaya Material: kotak membulat, ungu) ── */
