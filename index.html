@@ -5985,7 +5985,7 @@
 
     <!-- MODAL FILTER RIWAYAT: dibuka dari header "Riwayat Trade" (pola sama seperti Rekap & Impor).
          Berada di luar #tabPager supaya popup lead/kalender tidak terpotong overflow di HP. -->
-    <div id="riwayatFilterModal" style="z-index:95" onclick="if(event.target===this) closeRiwayatFilter()" class="fixed inset-2 sm:inset-0 bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4 hidden">
+    <div id="riwayatFilterModal" style="z-index:95" onclick="if(event.target===this) closeRiwayatFilter()" class="fixed inset-2 sm:inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 hidden">
         <div class="porto-card w-full max-w-3xl p-4 sm:p-5 rounded-2xl space-y-3 rise-in max-h-[92vh] overflow-y-auto custom-scroll">
             <div class="flex items-center justify-between gap-3">
                 <div class="flex items-center gap-2"><span class="section-dot"></span><h2 class="section-label">Filter riwayat trade</h2></div>
@@ -6001,10 +6001,9 @@
                     <button type="button" id="fltReset" class="hidden shrink-0 px-2 rounded-lg text-[10px] font-semibold text-amber-400 whitespace-nowrap" style="height:34px"></button>
                 </div>
                 <div class="flex flex-wrap items-center gap-2 mt-2">
-                    <button type="button" id="fltLeadBtn" class="porto-input rounded-lg px-1.5 text-[11px] inline-flex items-center gap-1 max-w-[180px]" style="height:30px" aria-label="Filter lead"><span id="fltLeadBtnBody" class="truncate">Semua lead</span></button>
+                    <button type="button" id="fltLeadBtn" class="porto-input rounded-lg px-2 text-[11px] inline-flex items-center gap-1.5 flex-1 min-w-[180px] max-w-none" style="height:32px" aria-label="Filter lead"><span id="fltLeadBtnBody" class="min-w-0 flex-1 text-left truncate">Semua lead</span></button>
                     <select id="fltLead" class="hidden"><option value="">Semua lead</option></select>
-                    <span class="text-[10px] text-[var(--text-faint)]">Urutkan</span>
-                    <div id="fltSort" class="inline-flex rounded-lg p-0.5 bg-[var(--surface-2)]">
+                    <div id="fltSort" class="inline-flex rounded-lg p-0.5 bg-[var(--surface-2)] ml-auto">
                         <button type="button" data-sort="closed">Closed</button>
                         <button type="button" data-sort="opened">Opened</button>
                     </div>
@@ -6845,6 +6844,9 @@
     #riwayatFilterModal #fltLeadPop { position: static !important; width: 100% !important; max-height: 220px !important; margin-top: 8px; }
     #riwayatFilterModal #fltDatePop { position: static !important; width: 100% !important; margin-top: 8px; }
     #riwayatFilterModal #fltBar { position: static; }
+    #riwayatFilterModal #fltLeadBtn { max-width: none !important; }
+    #riwayatFilterModal #fltSort { margin-left: auto; }
+    #riwayatFilterModal #fltReorder { margin-left: 0 !important; }
     #riwayatFilterModal .rk-x, .rk-x { width: 28px; height: 28px; border-radius: 50%; border: 0; background: var(--surface-2); color: var(--text-dim); font-size: 18px !important; line-height: 1; cursor: pointer; }
     /* Header Riwayat Trade bisa diketuk untuk membuka modal filter, sama seperti header Rekap */
     body[data-view="riwayat"] #tabBtnRiwayat { pointer-events: auto !important; cursor: pointer; }
@@ -6973,12 +6975,12 @@
         body[data-view="stats"] #tabBar, body[data-view="profil"] #tabBar { display: none !important; }
         body[data-view="stats"] #statsToolbar .adv-head button,
         body[data-view="stats"] .imp-proxy { display: none !important; }  /* Impor lama diganti tombol header */
-        /* HP Statistik: Lead & sorotan → Statistik lanjutan → Statistik Cepat → Kalender → Impor massal */
+        /* HP Statistik: Impor massal → Lead & sorotan → Statistik Cepat → Kalender → Statistik lanjutan */
+        body[data-view="stats"] #statsImportHeader { display: block; order: -2; }
         body[data-view="stats"] #statsSideCard { order: -1; }
-        body[data-view="stats"] #statsToolbar { order: 0; }
-        body[data-view="stats"] #quickStatsCard { order: 1; }
-        body[data-view="stats"] #calendarCard { order: 2; }
-        body[data-view="stats"] #statsImportHeader { display: block; order: 3; }
+        body[data-view="stats"] #quickStatsCard { order: 0; }
+        body[data-view="stats"] #calendarCard { order: 1; }
+        body[data-view="stats"] #statsToolbar { order: 2; }
 
         body[data-view="rekap"] #tabBar, body[data-view="riwayat"] #tabBar { top: env(safe-area-inset-top, 0px) !important; }
 
