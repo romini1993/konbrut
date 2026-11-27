@@ -1307,7 +1307,7 @@
                 </div>
 
                 <!-- Statistik Cepat -->
-                <div class="porto-card p-3.5 rounded-2xl shrink-0 cursor-pointer active:opacity-70 transition" onclick="toggleQuickStatsView()">
+                <div id="quickStatsCard" class="porto-card p-3.5 rounded-2xl shrink-0 cursor-pointer active:opacity-70 transition" onclick="toggleQuickStatsView()">
                     <div class="flex items-center gap-2 mb-2.5">
                         <span class="section-dot"></span>
                         <h2 class="section-label">Statistik</h2>
@@ -1316,7 +1316,7 @@
                 </div>
 
                 <!-- Kalender Aktivitas (Heatmap) -->
-                <div class="porto-card p-3.5 rounded-2xl lg:flex lg:flex-col lg:flex-1 lg:min-h-0 relative">
+                <div id="calendarCard" class="porto-card p-3.5 rounded-2xl lg:flex lg:flex-col lg:flex-1 lg:min-h-0 relative">
                     <div class="flex items-center justify-between mb-2.5 shrink-0">
                         <div class="flex items-center gap-2">
                             <span class="section-dot"></span>
@@ -1341,6 +1341,15 @@
                 </div>
                     <div id="heatmapCalendar" class="lg:flex-1 lg:flex lg:flex-col lg:min-h-0"></div>
                     <div id="heatmapTooltip" class="heatmap-tooltip absolute z-20 px-2 py-1.5 rounded-lg bg-[var(--surface-2)] border border-[var(--border)] shadow-lg text-center whitespace-nowrap"></div>
+                </div>
+
+                <!-- Sisi kanan kalender (desktop Statistik): diisi otomatis dari data yang sama -->
+                <div id="statsSideCard" class="porto-card p-3.5 rounded-2xl">
+                    <div class="flex items-center gap-2 mb-2.5">
+                        <span class="section-dot"></span>
+                        <h2 class="section-label">Lead & sorotan</h2>
+                    </div>
+                    <div id="statsSideBody" class="space-y-2"></div>
                 </div>
 
             </div>
@@ -3633,6 +3642,9 @@
             });
         }
         function renderTradeListOnly() {
+            // Filter / urutan aktif ==> tampilkan Riwayat sebagai rekap harian (grup per tanggal, bisa dibuka).
+            // Logikanya ada di window.renderRiwayatView (script filter). Fallback kalau script itu belum termuat.
+            if (typeof window.renderRiwayatView === 'function') { window.renderRiwayatView(); return; }
             const c = document.getElementById('tradeList');
             const data = (cachedGlobalResponse && cachedGlobalResponse.history) || [];
             if (!c) return;
@@ -4158,17 +4170,9 @@
             renderHeatmap(data);
             renderDailySummary(data, animateRows);
 
-            tradeContainer.innerHTML = '';
-
-            if (!data || data.length === 0) {
-                tradeContainer.innerHTML = '<p class="text-xs text-[var(--text-faint)] text-center py-4">Belum ada data trading.</p>';
-                return;
-            }
-
-            // Riwayat Trade: SELALU semua trade, tidak pernah difilter
-            listSorted(data).forEach((item, i) => {
-                tradeContainer.appendChild(createTradeCardElement(item, i));
-            });
+            // Riwayat Trade: pakai satu jalur render supaya tampilan rekap (saat filter/urutan aktif)
+            // tetap konsisten setelah data baru datang. Tanpa filter/urutan = daftar biasa.
+            renderTradeListOnly();
         }
 
         // Nilai yang SEDANG tampil di hero. Render pertama & ganti Total P&L <-> Net P&L: angka dihitung dari 0
@@ -6344,20 +6348,91 @@
             return true;
         }
         const active = () => !!(F.q || F.lead || F.side || F.res || F.from || F.to);
-        const list = $('tradeList'); let obs = null;
+        const list = $('tradeList'); let obs = null, riwayatRendering = false, riwayatExpanded = null;
+
+        // Riwayat tampil "layaknya Rekap" (baris harian yang bisa dibuka) kalau ada filter ATAU urutan aktif.
+        const groupingOn = () => active() || (typeof histSortMode !== 'undefined' && histSortMode !== 'closed');
+        const groupKey = t => (typeof histSortMode !== 'undefined' && histSortMode === 'opened') ? (t.opened || t.closed) : t.closed;
+        function renderRiwayatView() {
+            if (!list || riwayatRendering) return;
+            riwayatRendering = true;
+            try {
+                const rows = hist().filter(match);
+                list.innerHTML = '';
+                if (!rows.length) {
+                    list.innerHTML = '<p class="text-xs text-[var(--text-faint)] text-center py-4">Belum ada data trading.</p>';
+                    return;
+                }
+                if (!groupingOn()) {
+                    listSorted(rows).forEach((item, i) => list.appendChild(createTradeCardElement(item, i)));
+                    return;
+                }
+                const groups = new Map();
+                rows.forEach(t => {
+                    const key = groupKey(t) || '-';
+                    if (!groups.has(key)) groups.set(key, []);
+                    groups.get(key).push(t);
+                });
+                const openedMode = typeof histSortMode !== 'undefined' && histSortMode === 'opened';
+                const dateOf = k => openedMode ? parseOpenedDate(k) : parseClosedDate(k);
+                const keys = Array.from(groups.keys()).sort((a, b) => {
+                    const da = dateOf(a), db = dateOf(b);
+                    if (da && db && da - db) return db - da;
+                    return String(b).localeCompare(String(a));
+                });
+                keys.forEach(date => {
+                    const trades = listSorted(groups.get(date));
+                    const total = trades.reduce((s, t) => s + (_p(t) || 0), 0);
+                    const prof = total >= 0;
+                    const dmy = /^\d{2}\/\d{2}\/\d{4}$/.test(date) ? date : (typeof fmtDMY === 'function' ? fmtDMY(date) : date);
+                    const dayName = typeof getDayName === 'function' ? getDayName(dmy) : '';
+                    const isOpen = riwayatExpanded === date;
+                    const head = document.createElement('div');
+                    head.className = `entrance-item p-2.5 sm:p-3 rounded-xl border cursor-pointer flex justify-between items-center day-row-bar riwayat-group ${
+                        isOpen ? 'bg-amber-500/10 border-amber-500 ring-1 ring-amber-500' : 'bg-[var(--bg)] border-[var(--border)] hover:border-slate-600'
+                    }`;
+                    head.style.setProperty('--tone', prof ? 'var(--profit)' : 'var(--loss)');
+                    head.onclick = () => {
+                        if (head._holdFired) { head._holdFired = false; return; }
+                        riwayatExpanded = isOpen ? null : date;
+                        renderRiwayatView();
+                    };
+                    head.innerHTML = `
+                        <div class="flex items-center gap-2 min-w-0">
+                            <svg class="chevron ${isOpen ? 'open' : ''} shrink-0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+                            <div class="min-w-0">
+                                <div class="font-display font-bold text-xs sm:text-sm text-white truncate">${openedMode ? '<span class="text-slate-500">O:</span> ' : ''}${dayName ? dayName + ', ' : ''}${dmy}</div>
+                                <div class="text-[9px] sm:text-[10px] text-[var(--text-dim)] mt-0.5">${trades.length} trade ${openedMode ? 'dibuka' : 'tertutup'}</div>
+                            </div>
+                        </div>
+                        <div class="text-right shrink-0 pl-2">
+                            <div class="num font-bold text-xs sm:text-sm ${prof ? 'text-emerald-400' : 'text-rose-400'} whitespace-nowrap">${prof ? '+' : ''}${total.toFixed(2)} USDT</div>
+                            <div class="num text-[9px] sm:text-[10px] text-[var(--text-dim)] font-medium mt-0.5 whitespace-nowrap">${typeof formatRupiah === 'function' ? formatRupiah(total * currentKursIdr) : ''}</div>
+                        </div>`;
+                    list.appendChild(head);
+                    if (isOpen) {
+                        const panel = document.createElement('div');
+                        panel.className = 'expand-in space-y-2 pl-1 pt-1 riwayat-group-panel';
+                        trades.forEach((item, idx) => panel.appendChild(createTradeCardElement(item, idx, true)));
+                        list.appendChild(panel);
+                    }
+                });
+            } finally {
+                riwayatRendering = false;
+            }
+            try { if (typeof applyLimit === 'function') applyLimit(); } catch (e) {}
+        }
+        window.renderRiwayatView = renderRiwayatView;
+
         function apply() {
             if (obs) obs.disconnect();
-            const by = {}; hist().forEach(t => { by[parseInt(t.no)] = t; });
-            let shown = 0, total = 0;
-            Array.from(list.children).forEach(row => {
-                const t = by[parseInt((row.textContent.match(/#(\d+)/) || [])[1])]; if (!t) return;
-                total++; const ok = match(t); row.style.display = ok ? '' : 'none'; if (ok) shown++;
-            });
-            const rb = $('fltReset'); rb.classList.toggle('hidden', !active()); rb.textContent = `${shown}/${total} \u2715`;
+            renderRiwayatView();
+            const all = hist(), shown = all.filter(match).length;
+            const rb = $('fltReset'); rb.classList.toggle('hidden', !active()); rb.textContent = `${shown}/${all.length} \u2715`;
             $('fltDateBtn').style.borderColor = (F.from || F.to) ? '#5960e5' : '';
             if (obs) obs.observe(list, { childList: true });
         }
-        obs = new MutationObserver(apply); obs.observe(list, { childList: true });
+        obs = new MutationObserver(() => { if (!riwayatRendering) apply(); }); obs.observe(list, { childList: true });
         [['fltQ', 'q', v => v.trim().toUpperCase()], ['fltLead', 'lead', v => v], ['fltSide', 'side', v => v], ['fltRes', 'res', v => v], ['fltFrom', 'from', v => v], ['fltTo', 'to', v => v]]
             .forEach(([id, key, fn]) => { const e = $(id); const h = () => { F[key] = fn(e.value); apply(); }; e.addEventListener('input', h); e.addEventListener('change', h); });
         const clearDates = () => { ['fltFrom', 'fltTo'].forEach(id => { $(id).value = ''; }); F.from = ''; F.to = ''; apply(); };
@@ -6668,6 +6743,7 @@
     .adv-box .v.r { color: var(--loss); }
     .adv-empty { grid-column: 1 / -1; text-align: center; font-size: 12px; color: var(--text-faint); padding: 16px 0; }
     #widgetsCol .adv-orig { display: none !important; }
+    #statsSideCard { display: none !important; }   /* hanya dipakai di Statistik desktop */
 
     /* Statistik: teks abu-abu dipertegas (sebelumnya terlalu gelap) */
     body[data-view="stats"] #widgetsCol { --text-dim: #c0c8d8; --text-faint: #a1aabd; }
@@ -6849,8 +6925,13 @@
         body[data-view="home"] #riwayatCard .see-all { margin-top: auto; }
         body[data-view="home"] #riwayatCard #tradeList { margin-bottom: 8px; }
 
-        /* BERANDA desktop: Rekap (atas) + Riwayat (bawah), masing-masing 6 baris, lalu tombol "Lihat semua" */
-        body[data-view="home"] #rekapCardWrap, body[data-view="home"] #riwayatCardWrap { display: block !important; }
+        /* BERANDA desktop: Rekap (atas) + Riwayat (bawah), masing-masing 7 baris, lalu tombol "Lihat semua".
+           Riwayat dipaksa mengisi sisa tinggi kolom supaya batas bawahnya rata dengan kalender di kolom kanan. */
+        body[data-view="home"] #rekapCardWrap { display: block !important; }
+        body[data-view="home"] #riwayatCardWrap { display: flex !important; flex-direction: column; flex: 1 1 auto; }
+        body[data-view="home"] #riwayatCard { flex: 1 1 auto; display: flex; flex-direction: column; }
+        body[data-view="home"] #heatmapCalendar { min-height: 300px; }
+        body[data-view="home"] #heatmapCalendar > div { grid-template-rows: auto repeat(6, minmax(44px, 1fr)) !important; }
         body[data-view="home"] .see-all {
             display: flex; align-items: center; justify-content: center; gap: 6px;
             width: 100%; margin-top: 8px; padding: 10px 0; border-radius: 12px; cursor: pointer;
@@ -6870,6 +6951,19 @@
     /* ═════════ DESKTOP LEBAR (>= 1024px) ═════════ */
     @media (min-width: 1024px) {
         #advInline { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+
+        /* Statistik: kalender tetap di tengah, sisi kiri/kanan diisi kartu ringkas supaya tidak kosong */
+        body[data-view="stats"] #widgetsCol {
+            display: grid !important;
+            grid-template-columns: minmax(220px, 1fr) minmax(0, 760px) minmax(220px, 1fr);
+            grid-template-areas: "adv adv adv" "quick cal side";
+            gap: 10px; align-items: start;
+        }
+        body[data-view="stats"] #statsToolbar { grid-area: adv; }
+        body[data-view="stats"] #quickStatsCard { grid-area: quick; }
+        body[data-view="stats"] #calendarCard { grid-area: cal; }
+        body[data-view="stats"] #statsSideCard { grid-area: side; display: block !important; }
+        body[data-view="stats"] #heatmapCalendar { max-width: none; margin-top: 0; }
     }
 
     /* Kalender di halaman Statistik (desktop): kotak tanggal tidak gepeng, kalender di tengah dengan lebar wajar */
@@ -7380,26 +7474,60 @@
         window.addEventListener('mouseup', e => { if (!md) return; md = false; step(e.clientX - mx, e.clientY - my, 50); });
     })();
 
-    // Beranda desktop: tiap daftar hanya 6 baris terbaru (rekap = 6 hari, riwayat = 6 trade); HP tidak dibatasi
-    const LIM = 6, wide = window.matchMedia('(min-width: 768px)');
+    // Beranda desktop: tiap daftar hanya 7 entri terbaru (rekap = 7 hari, riwayat = 7 grup/trade); HP tidak dibatasi
+    const LIM = 7, wide = window.matchMedia('(min-width: 768px)');
     function applyLimit() {
         const on = wide.matches && view === 'home';
-        const dl = $('dailySummaryList');
-        if (dl) { let n = 0, hide = false;
-            Array.from(dl.children).forEach(el => {
-                if (el.classList.contains('day-row-bar')) { n++; hide = on && n > LIM; }
-                el.classList.toggle('home-hide', hide);          // panel detail ikut baris induknya
+        const limitList = el => {
+            if (!el) return;
+            let n = 0, hide = false;
+            Array.from(el.children).forEach(node => {
+                // baris harian / kartu trade menandai satu entri; panel expand ikut entri induknya
+                if (node.classList.contains('day-row-bar') || node.classList.contains('row-card')) {
+                    n++; hide = on && n > LIM;
+                }
+                node.classList.toggle('home-hide', hide);
             });
-        }
-        const tl = $('tradeList');
-        if (tl) Array.from(tl.children).forEach((el, i) => el.classList.toggle('home-hide', on && i >= LIM));
+        };
+        limitList($('dailySummaryList'));
+        limitList($('tradeList'));
     }
     ['dailySummaryList', 'tradeList'].forEach(id => { const e = $(id); if (e && window.MutationObserver) new MutationObserver(applyLimit).observe(e, { childList: true }); });
     wide.addEventListener && wide.addEventListener('change', applyLimit);
     document.querySelectorAll('.see-all').forEach(b => b.addEventListener('click', () => setView(b.dataset.go)));
 
+    // Statistik desktop: sisi kanan kalender diisi ringkasan per lead + hari terbaik/terburuk + trade terakhir.
+    function renderStatsSide() {
+        const host = $('statsSideBody'); if (!host || typeof advStats !== 'function') return;
+        let arr = []; try { arr = (cachedGlobalResponse && cachedGlobalResponse.history) || []; } catch (e) {}
+        if (!arr.length) { host.innerHTML = '<div class="adv-empty">Belum ada trade.</div>'; return; }
+        const r = advStats(arr), f2 = v => (v >= 0 ? '+' : '') + v.toFixed(2);
+        const counts = {}; arr.forEach(t => { const id = getTradeLead(t); counts[id] = (counts[id] || 0) + 1; });
+        const leadRows = Object.keys(r.leads).sort((a, b) => r.leads[b] - r.leads[a]).slice(0, 5).map(id => {
+            const v = r.leads[id], nm = escHtml(leadInfo(id).nama);
+            return `<div class="flex items-center gap-2 bg-[var(--surface-2)] rounded-xl p-2">
+                ${leadAvatarHtml(id, 20)}
+                <div class="min-w-0 flex-1"><div class="text-[10px] text-[var(--text-dim)] truncate">${nm}</div><div class="text-[9px] text-[var(--text-faint)]">${counts[id] || 0} trade</div></div>
+                <div class="num text-[11px] font-bold ${v >= 0 ? 'text-emerald-400' : 'text-rose-400'}">${f2(v)}</div>
+            </div>`;
+        }).join('');
+        const daily = {}; arr.forEach(t => { const k = String(t.closed || ''); if (k) daily[k] = (daily[k] || 0) + _p(t); });
+        const days = Object.entries(daily).sort((a, b) => b[1] - a[1]);
+        const mini = (k, v, c) => `<div class="bg-[var(--surface-2)] rounded-xl p-2.5"><div class="text-[10px] text-[var(--text-dim)]">${k}</div><div class="num text-xs font-bold truncate ${c || ''}">${v}</div></div>`;
+        const last = arr.slice().sort((a, b) => _k(b.closed) - _k(a.closed))[0];
+        host.innerHTML = `
+            <div class="text-[10px] font-semibold text-[var(--text-dim)]">PER LEAD</div>
+            ${leadRows || '<div class="text-[10px] text-[var(--text-faint)]">Belum ada lead.</div>'}
+            <div class="grid grid-cols-2 gap-2 pt-1">
+                ${mini('Hari terbaik', days.length ? `${days[0][0]}<br><span class="${days[0][1] >= 0 ? 'text-emerald-400' : 'text-rose-400'}">${f2(days[0][1])}</span>` : '-')}
+                ${mini('Hari terburuk', days.length ? `${days[days.length - 1][0]}<br><span class="${days[days.length - 1][1] >= 0 ? 'text-emerald-400' : 'text-rose-400'}">${f2(days[days.length - 1][1])}</span>` : '-')}
+            </div>
+            ${mini('Trade terakhir', last ? `${escHtml(last.pair)} · ${getTradeSide(last)} · <span class="${_p(last) >= 0 ? 'text-emerald-400' : 'text-rose-400'}">${f2(_p(last))}</span><br><span class="text-[9px] font-normal text-[var(--text-faint)]">${escHtml(String(last.closed || '-'))}</span>` : '-')}`;
+    }
+
     // Statistik lanjutan: tampil langsung di halaman Statistik (semua trade), diperbarui otomatis saat data berubah
     function renderAdvInline() {
+        renderStatsSide();
         const host = $('advInline'); if (!host || typeof advStats !== 'function') return;
         let arr = []; try { arr = (cachedGlobalResponse && cachedGlobalResponse.history) || []; } catch (e) {}
         const r = advStats(arr);
