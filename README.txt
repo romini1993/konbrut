@@ -4,7 +4,7 @@ PATCH: DATA PER LEAD (trader yang diikuti)
 File hasil patch ada di folder ini:
 - code.gs       -> ganti isi Code.gs di Apps Script
 - index.html    -> ganti index.html di repo GitHub
-- sw.js         -> ganti sw.js di repo GitHub (cache version sudah naik jadi v18-ocr)
+- sw.js         -> ganti sw.js di repo GitHub (cache version sudah naik jadi v19-avatar)
 - manifest.json   -> ganti manifest.json di repo GitHub (nama/short_name + icon lokal 192/512).
 - icon-64.png     -> favicon tab browser (64x64).
 - icon-180.png    -> apple-touch-icon untuk home screen iOS.
@@ -34,7 +34,7 @@ Langkah pasang
 3. Apps Script -> Terapkan -> Kelola deployment -> pensil -> Versi: Versi baru -> Terapkan.
    Link /exec tidak berubah, jadi Database.js tidak perlu diedit.
 4. Push index.html dan sw.js ke GitHub (repo romini1993/sample).
-5. Buka aplikasi. Service worker v18 akan membuang cache lama otomatis.
+5. Buka aplikasi. Service worker v19 akan membuang cache lama otomatis.
 
 PENTING untuk fitur ambil dari link
 -----------------------------------
@@ -175,14 +175,9 @@ Yang berubah di aplikasi
 - Total P&L di hero tetap total SEMUA lead. Filter lead hanya mengubah daftar riwayat
   dan statistik lanjutan, supaya angka gabungan tidak membingungkan.
 
-Impor dari aplikasi Binance di HP (format B/S + OCR)
----------------------------------------------------
-- Modal Impor sekarang punya tombol "Ambil dari screenshot (OCR)". Pilih satu atau beberapa
-  screenshot riwayat sekaligus. Teks hasil OCR dimasukkan ke kolom teks yang sudah ada, jadi
-  BISA dikoreksi dulu sebelum tombol Impor ditekan (jangan langsung dipercaya 100%).
-- OCR memakai Tesseract.js yang dimuat dari CDN saat tombol itu ditekan (unduhan pertama
-  sekitar 10 MB untuk mesin + data bahasa Inggris). Setelah itu tersimpan di cache service worker
-  v18, jadi tidak diunduh ulang. Perlu koneksi internet saat pemakaian pertama.
+Impor dari aplikasi Binance di HP (format B/S)
+----------------------------------------------
+- Teks riwayat ditempel langsung ke kolom Modal Impor (salin manual dari aplikasi Binance).
 - Format blok yang dikenali (sama untuk trade akun biasa maupun posisi copy trade):
     B SOXLUSDT              <- B = Buy/Long
     S SOXLUSDT              <- S = Sell/Short
@@ -195,12 +190,20 @@ Impor dari aplikasi Binance di HP (format B/S + OCR)
     Ditutup
     2026-11-27 09:45:42
   Timestamp pertama dalam blok = Dibuka, kedua = Ditutup. Jam ikut dipakai untuk sorting ascending.
-- Label dan nilainya boleh terpisah/tertukar urutannya (umum di hasil OCR): PNL diambil dari
-  angka bertanda (+/-) lebih dulu; kalau tidak ada, dari angka pertama setelah label PNL yang
-  bukan persen. ROI, volume, harga entri, leverage, dan status diabaikan.
+- Label dan nilainya boleh terpisah/tertukar urutannya: PNL diambil dari angka bertanda (+/-)
+  lebih dulu; kalau tidak ada, dari angka murni pertama di blok (bukan persen). ROI, volume,
+  harga entri, leverage, dan status diabaikan.
 - Desimal Indonesia dinormalisasi: 105,99 -> 105.99; +3,45080034 -> 3.45080034;
   1.018,41792 -> 1018.41792 (titik = pemisah ribuan, koma = desimal).
 - Format lama (Open/Close Long/Short dan baris 5 kolom) tetap diterima.
+
+Ukuran foto lead
+----------------
+- Pemilih lead di form/edit/impor & filter: avatar 24-30px (sebelumnya 16-20px), baris popup
+  lebih tinggi & teks 12px. Pratinjau foto di dialog Tambah Lead: 44px.
+- Kartu Riwayat Trade & Rekap Harian: foto lead dapat kolom sendiri di kiri (36px, lingkaran
+  mengikuti warna lead). Nama lead dipindah dari badge kecil 8px ke baris PROFIT/LOSS dengan
+  teks 10px, jadi foto tidak lagi "nempel" di badge yang sempit.
 
 Perubahan Sheet (tambahan saja, tidak menggeser yang lama)
 ----------------------------------------------------------
@@ -226,7 +229,7 @@ Ganti ikon aplikasi
    icon-64.png untuk favicon tab, icon-180.png untuk apple-touch-icon iOS.
 3. manifest.json memakai icon-192.png ("any") dan icon-512.png ("any maskable").
    Jangan pakai URL CDN /128/ lalu diklaim 512x512 — hasilnya buram dan bisa gagal install.
-4. Push juga sw.js (v18-ocr) supaya cache lama dibuang.
+4. Push juga sw.js (v19-avatar) supaya cache lama dibuang.
 5. Nama di bawah icon diatur lewat "short_name"; warna status bar lewat "theme_color".
 
 Pintasan Profil (Binance & Sheet)

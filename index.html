@@ -1904,9 +1904,9 @@
         // Pilih lead: foto + nama nempel di tombol dan di tiap baris daftar, seperti badge riwayat.
         // <select> aslinya disembunyikan, tapi tetap jadi source of truth (form/edit/impor baca .value).
         const LEAD_PICKERS = [
-            { sel: 'lead', btn: 'leadBtn', body: 'leadBtnBody', pop: 'leadPop', size: 20, hapus: true },
-            { sel: 'editLead', btn: 'editLeadBtn', body: 'editLeadBtnBody', pop: 'editLeadPop', size: 18 },
-            { sel: 'impLead', btn: 'impLeadBtn', body: 'impLeadBtnBody', pop: 'impLeadPop', size: 16, prefix: 'Lead: ' }
+            { sel: 'lead', btn: 'leadBtn', body: 'leadBtnBody', pop: 'leadPop', size: 30, hapus: true },
+            { sel: 'editLead', btn: 'editLeadBtn', body: 'editLeadBtnBody', pop: 'editLeadPop', size: 26 },
+            { sel: 'impLead', btn: 'impLeadBtn', body: 'impLeadBtnBody', pop: 'impLeadPop', size: 24, prefix: 'Lead: ' }
         ];
         function syncLeadAvatars() {
             const put = (cfg) => {
@@ -1922,7 +1922,7 @@
                 const fsel = document.getElementById('fltLead');
                 const v = fsel ? fsel.value : '';
                 btnBody.innerHTML = v
-                    ? leadAvatarHtml(v, 16) + '<span class="truncate">' + escHtml(leadLabel(v)) + '</span>'
+                    ? leadAvatarHtml(v, 24) + '<span class="truncate">' + escHtml(leadLabel(v)) + '</span>'
                     : 'Semua lead';
             }
         }
@@ -1932,7 +1932,7 @@
             const pop = document.getElementById(cfg.pop); if (!pop) return;
             pop.innerHTML = LEADS.map(l =>
                 `<div class="w-full flex items-center rounded-lg hover:bg-[var(--surface-2)]">`
-                + `<button type="button" data-lead="${escHtml(l.id)}" class="flex-1 min-w-0 flex items-center gap-2 px-2 py-1.5 text-[11px] text-left text-slate-200">`
+                + `<button type="button" data-lead="${escHtml(l.id)}" class="flex-1 min-w-0 flex items-center gap-2.5 px-2 py-2 text-[12px] text-left text-slate-200">`
                 + leadAvatarHtml(l.id, cfg.size, l)
                 + `<span class="truncate">${escHtml(l.nama)}</span></button>`
                 + (cfg.hapus && l.id !== 'utama'
@@ -1992,8 +1992,8 @@
             const all = [{ id: '', nama: 'Semua lead', warna: '#94a3b8', foto: '' }].concat(LEADS)
                 .concat(LEADS_ARSIP.map(l => Object.assign({}, l, { nama: l.nama + ' (dihapus)' })));
             pop.innerHTML = all.map(l =>
-                `<button type="button" data-lead="${escHtml(l.id)}" class="w-full flex items-center gap-1.5 px-2 py-1.5 text-[11px] text-left text-slate-200 hover:bg-[var(--surface-2)] rounded-lg">`
-                + leadAvatarHtml(l.id, 18, l)
+                `<button type="button" data-lead="${escHtml(l.id)}" class="w-full flex items-center gap-2.5 px-2 py-2 text-[12px] text-left text-slate-200 hover:bg-[var(--surface-2)] rounded-lg">`
+                + leadAvatarHtml(l.id, 26, l)
                 + `<span class="truncate">${escHtml(l.nama)}</span></button>`
             ).join('');
             pop.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
@@ -2128,7 +2128,7 @@
             const fotoPreview = dlg.card.querySelector('#leadFotoPreview');
             const fotoClear = dlg.card.querySelector('#leadFotoClear');
             const paintFoto = () => {
-                if (fotoPreview) fotoPreview.innerHTML = leadAvatarHtml('', 34, { id: '', nama: '?', warna: picked, foto: leadFoto });
+                if (fotoPreview) fotoPreview.innerHTML = leadAvatarHtml('', 44, { id: '', nama: '?', warna: picked, foto: leadFoto });
                 if (fotoClear) fotoClear.classList.toggle('hidden', !leadFoto);
             };
             const paint = () => {
@@ -3853,31 +3853,31 @@
             const sideLetter = sideName === 'Sell' ? 'S' : 'B';
             const sideBg = sideName === 'Sell' ? '#F6465D' : '#2EBD85';
             const leadNm = leadLabel(item.lead);
-            const rawLeadClr = leadColor(item.lead);
-            const leadClr = /^#[0-9a-fA-F]{6}$/.test(rawLeadClr) ? rawLeadClr : '#a5a8ff';
-            const leadBadge = `<span class="ml-1 inline-flex items-center gap-1 max-w-[104px] rounded px-1 text-[8px] font-bold normal-case align-middle" style="color:${leadClr};background:${leadClr}22;border:1px solid ${leadClr}55" title="Lead: ${escHtml(leadNm)}">${leadAvatarHtml(item.lead, 14)}<span class="truncate">${escHtml(leadNm)}</span></span>`;
+            // Avatar lead dapat kolom sendiri (36px) supaya fotonya jelas. Nama lead pindah ke baris PROFIT/LOSS.
+            const leadAvatar = `<span class="shrink-0" title="Lead: ${escHtml(leadNm)}">${leadAvatarHtml(item.lead, 36)}</span>`;
 
             const shouldAnimate = forceAnimate || animateRows;
             // saat diurutkan menurut Opened, baris menampilkan tanggal Opened (diberi awalan "O:") supaya urutannya terlihat jelas
             const fmtDMY = (v) => { const t = String(v || '').trim(); if (!t) return ''; if (t.indexOf('/') > -1) return t; const m = t.split('T')[0].match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/); return m ? `${m[3].padStart(2, '0')}/${m[2].padStart(2, '0')}/${m[1]}` : t; };
             const dateLabel = (typeof histSortMode !== 'undefined' && histSortMode === 'opened') ? `<span class="text-slate-500">O:</span> ${fmtDMY(item.opened) || item.closed}` : item.closed;
             const div = document.createElement('div');
-            div.className = `row-card entrance-item ${shouldAnimate ? 'rise-in' : ''} p-2.5 sm:p-3 rounded-xl border ${bgCard} flex items-center justify-between hover:border-slate-700 transition gap-1.5 cursor-pointer select-none`;
+            div.className = `row-card entrance-item ${shouldAnimate ? 'rise-in' : ''} p-2.5 sm:p-3 rounded-xl border ${bgCard} flex items-center justify-between hover:border-slate-700 transition gap-2 cursor-pointer select-none`;
             if (i !== undefined) div.style.animationDelay = `${i * 15}ms`;
             div.innerHTML = `
-                <div class="w-[38%] min-w-0 text-left">
+                ${leadAvatar}
+                <div class="flex-1 min-w-0 text-left">
                     <div class="text-[11px] sm:text-xs text-slate-300 font-medium truncate">
                         <span class="text-amber-400 font-bold">#${item.no}</span> • <span class="text-slate-200">${dateLabel}</span>
                     </div>
-                    <div class="text-[9px] sm:text-[10px] font-semibold ${isProfit ? 'text-emerald-500' : 'text-rose-500'} uppercase mt-0.5">${isProfit ? 'PROFIT' : 'LOSS'}${leadBadge}</div>
+                    <div class="text-[9px] sm:text-[10px] font-semibold ${isProfit ? 'text-emerald-500' : 'text-rose-500'} uppercase mt-0.5 flex items-center gap-1 min-w-0">${isProfit ? 'PROFIT' : 'LOSS'}<span class="text-slate-400 normal-case font-medium truncate">· ${escHtml(leadNm)}</span></div>
                 </div>
-                <div class="w-[28%] px-1">
+                <div class="w-[24%] px-1">
                     <div class="flex items-center justify-center gap-1.5 min-w-0">
                         <span class="shrink-0 inline-flex items-center justify-center rounded-[4px] text-white font-bold text-[9px] sm:text-[10px] w-[15px] h-[15px] sm:w-4 sm:h-4" style="background:${sideBg}" title="${sideName}">${sideLetter}</span>
                         <span class="font-display font-bold text-xs sm:text-sm text-white truncate">${item.pair}</span>
                     </div>
                 </div>
-                <div class="w-[34%] text-right min-w-0">
+                <div class="w-[30%] text-right min-w-0">
                     <div class="num font-bold text-xs sm:text-sm ${pnlColor} whitespace-nowrap">${isProfit ? '+' : ''}${pnlNum.toFixed(2)} USDT</div>
                     <div class="num text-[9px] sm:text-[10px] text-[var(--text-dim)] font-medium num mt-0.5 whitespace-nowrap">${totalIdr}</div>
                 </div>
@@ -5911,11 +5911,9 @@
                 <div id="impLeadPop" class="hidden absolute left-0 top-full mt-1 z-[60] w-full max-h-48 overflow-y-auto custom-scroll porto-card rounded-xl p-1 shadow-xl"></div>
             </div>
             <button type="button" id="impAdd" class="w-full px-3 py-2.5 rounded-xl bg-[var(--surface-2)] border border-[var(--border)] text-[13px] font-semibold text-amber-400">+ Tambah ke daftar</button>
-            <button type="button" id="impShot" class="w-full px-3 py-2 rounded-xl bg-[var(--surface-2)] border border-[var(--border)] text-[12px] font-semibold text-sky-300">📷 Ambil dari screenshot (OCR)</button>
-            <input type="file" id="impShotFile" accept="image/*" multiple class="hidden">
-            <textarea id="impText" rows="5" class="w-full porto-input rounded-xl p-3 text-[12px] sm:text-[13px] num" placeholder="Tempel blok 'B SOXLUSDT' / 'S SOXLUSDT' dari aplikasi Binance, atau salinan riwayat Open/Close Long/Short, atau baris 5 kolom. Bisa juga tekan 'Ambil dari screenshot'."></textarea>
+            <textarea id="impText" rows="5" class="w-full porto-input rounded-xl p-3 text-[12px] sm:text-[13px] num" placeholder="Tempel blok 'B SOXLUSDT' / 'S SOXLUSDT' dari aplikasi Binance, atau salinan riwayat Open/Close Long/Short, atau baris 5 kolom"></textarea>
             <label class="flex items-center gap-2 text-[11px] text-[var(--text-faint)]"><input id="impFee" type="checkbox"> Riwayat Binance: kurangi fee dari PNL (kalau dimatikan, PNL = Realized Profit)</label>
-            <p class="text-[11px] text-[var(--text-faint)] leading-relaxed">Format HP: tiap posisi diawali <b>B</b> (Buy/Long) atau <b>S</b> (Sell/Short) + symbol, lalu blok berisi <b>PNL</b> dan tanggal <b>Dibuka</b>/<b>Ditutup</b> lengkap dengan jam. Koma desimal otomatis jadi titik (1.018,41792 → 1018.41792). Hasil OCR ditaruh di kolom ini — <b>cek dulu sebelum Impor</b>. Format lama tetap jalan: Open/Close Long/Short, atau 5 kolom (tanggal boleh 25102026, 25/10/2026, atau 2026-10-25; dipisah tab, koma, titik koma, atau titik).</p>
+            <p class="text-[11px] text-[var(--text-faint)] leading-relaxed">Format HP: tiap posisi diawali <b>B</b> (Buy/Long) atau <b>S</b> (Sell/Short) + symbol, lalu blok berisi <b>PNL</b> dan tanggal <b>Dibuka</b>/<b>Ditutup</b> lengkap dengan jam. Koma desimal otomatis jadi titik (1.018,41792 → 1018.41792). Format lama tetap jalan: Open/Close Long/Short, atau 5 kolom (tanggal boleh 25102026, 25/10/2026, atau 2026-10-25; dipisah tab, koma, titik koma, atau titik).</p>
             <div id="impInfo" class="text-[12px] text-[var(--text-dim)] leading-relaxed"></div>
             <div id="impPrev" class="max-h-56 overflow-y-auto custom-scroll text-[12px] sm:text-[13px] num space-y-1"></div>
             <button type="button" id="impRun" disabled class="w-full px-3 py-3 rounded-xl bg-amber-500 text-[#ffffff] text-[13px] font-bold disabled:opacity-40">Impor</button>
@@ -5979,7 +5977,7 @@
         return ln.split(',').map(x => x.trim());
     }
     // ── Blok dari aplikasi Binance di HP: baris diawali "B SOXLUSDT" / "S SOXLUSDT".
-    //    B = Buy/Long, S = Sell/Short. Label & nilainya kadang terpisah (hasil OCR),
+    //    B = Buy/Long, S = Sell/Short. Label & nilainya kadang terpisah saat disalin,
     //    jadi PNL diambil dari angka bertanda (+/-) atau angka pertama setelah label PNL.
     //    Desimal Indonesia (1.018,41792) dinormalisasi ke 1018.41792.
     const impNum = s => {
@@ -6017,13 +6015,13 @@
             });
             if (!ts.length) return;
             const opened = ts[0], closed = ts[1] || ts[0];
-            // Angka bertanda lebih dipercaya karena OCR bisa menukar urutan label/nilai.
+            // Angka bertanda lebih dipercaya karena urutan label/nilai bisa tertukar saat disalin.
             const plain = s => /^[+-]?[\d.,]+$/.test(String(s).trim());
             let pnl = NaN;
             const signed = body.find(ln => /^[+-][\d.,]+$/.test(String(ln).trim()));
             if (signed !== undefined) pnl = impNum(signed);
             if (!isFinite(pnl)) {
-                // Label dan nilai bisa tertukar (OCR), jadi cari angka murni pertama di seluruh blok.
+                // Label dan nilai bisa tertukar, jadi cari angka murni pertama di seluruh blok.
                 const first = body.find(ln => plain(ln) && !/%/.test(ln));
                 if (first !== undefined) pnl = impNum(first);
             }
@@ -6079,7 +6077,7 @@
             if (n < (have.get(key) || 0)) { used.set(key, n + 1); return true; }
             return false;
         };
-        // Blok B/S dari aplikasi Binance (dan hasil OCR screenshot) diproses lebih dulu.
+        // Blok B/S dari aplikasi Binance diproses lebih dulu.
         const blocks = impBlocks(text);
         blocks.items.forEach(d => {
             const [y, m, dd] = d.closed.split('-');
@@ -6202,7 +6200,7 @@
         function refresh() {
             const r = imp = impParse($('impText').value, hist(), { fee: $('impFee').checked, lead: $('impLead').value });
             const lid = r.lead || validLeadId($('impLead').value);
-            const badge = `${leadAvatarHtml(lid, 15)} <b>${esc(leadLabel(lid))}</b>`;
+            const badge = `${leadAvatarHtml(lid, 22)} <b>${esc(leadLabel(lid))}</b>`;
             info.innerHTML = r.rows.length
                 ? `<span class="inline-flex items-center gap-1">Lead tujuan: ${badge}</span> · Siap diimpor: <b class="text-emerald-400">${r.ok.length}</b> · Duplikat dilewati: <b>${r.dup}</b> · Salah: <b class="${r.errs.length ? 'text-rose-400' : ''}">${r.errs.length}</b>${r.openPos ? ` · Posisi belum tertutup (dilewati): <b>${r.openPos}</b>` : ''}`
                 : '';
@@ -6216,68 +6214,6 @@
             $('impRun').disabled = !r.ok.length || !!window.__impBusy;
         }
         const openImport = () => { applyLeadOptions(cachedGlobalResponse); $('importModal').classList.remove('hidden'); refresh(); };
-        // OCR screenshot -> teks dimasukkan ke textarea yang sama, jadi bisa dikoreksi sebelum Impor.
-        let ocrLoading = null;
-        function loadTesseract() {
-            if (window.Tesseract && window.Tesseract.createWorker) return Promise.resolve(window.Tesseract);
-            if (ocrLoading) return ocrLoading;
-            ocrLoading = new Promise((resolve, reject) => {
-                const s = document.createElement('script');
-                s.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
-                s.onload = () => window.Tesseract ? resolve(window.Tesseract) : reject(new Error('OCR tidak termuat'));
-                s.onerror = () => reject(new Error('Gagal mengunduh OCR. Cek koneksi internet.'));
-                document.head.appendChild(s);
-            }).catch(e => { ocrLoading = null; throw e; });
-            return ocrLoading;
-        }
-        async function impBitmap(file) {
-            if (typeof createImageBitmap === 'function') return await createImageBitmap(file);
-            return await new Promise((res, rej) => {
-                const img = new Image();
-                img.onload = () => res(img);
-                img.onerror = () => rej(new Error('Gambar tidak bisa dibuka'));
-                img.src = URL.createObjectURL(file);
-            });
-        }
-        async function impReadImages(files) {
-            const before = info.textContent;
-            try {
-                const T = await loadTesseract();
-                info.textContent = 'Menyiapkan OCR...';
-                const worker = await T.createWorker('eng');
-                const chunks = [];
-                for (let k = 0; k < files.length; k++) {
-                    info.textContent = `Membaca screenshot ${k + 1} / ${files.length}...`;
-                    const bmp = await impBitmap(files[k]);
-                    const sc = Math.min(2, 4096 / Math.max(bmp.width, bmp.height));
-                    const cv = document.createElement('canvas');
-                    cv.width = Math.max(1, Math.round(bmp.width * sc));
-                    cv.height = Math.max(1, Math.round(bmp.height * sc));
-                    const cx = cv.getContext('2d');
-                    cx.imageSmoothingEnabled = true; cx.imageSmoothingQuality = 'high';
-                    cx.drawImage(bmp, 0, 0, cv.width, cv.height);
-                    const { data } = await worker.recognize(cv);
-                    chunks.push(String((data && data.text) || '').trim());
-                    if (bmp.close) bmp.close();
-                }
-                await worker.terminate();
-                const txt = chunks.join('\n');
-                if (!txt.trim()) { showToast('Teks tidak terbaca dari gambar', 'error'); refresh(); return; }
-                const ta = $('impText');
-                ta.value = (ta.value.trim() ? ta.value.replace(/\s+$/, '') + '\n\n' : '') + txt;
-                refresh();
-                showToast('Screenshot terbaca. Cek hasilnya sebelum Impor.', 'success');
-            } catch (e) {
-                info.textContent = before;
-                showToast('Gagal baca screenshot: ' + ((e && e.message) || e), 'error');
-            }
-        }
-        $('impShot').onclick = () => $('impShotFile').click();
-        $('impShotFile').addEventListener('change', e => {
-            const files = Array.from(e.target.files || []).filter(f => /^image\//.test(f.type));
-            e.target.value = '';
-            if (files.length) impReadImages(files);
-        });
         $('impText').addEventListener('input', refresh); $('impFee').addEventListener('change', refresh); $('impLead').addEventListener('change', refresh);
         $('impClose').onclick = () => { if (!window.__impBusy) $('importModal').classList.add('hidden'); };
         // isi manual: tanggal otomatis jadi dd/mm/yyyy saat diketik; kalender (flatpickr, sudah dimuat aplikasi) dibuka lewat ikon

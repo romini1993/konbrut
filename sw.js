@@ -1,11 +1,11 @@
 // Naikkan versi ini SETIAP kali kamu deploy perubahan (v2, v3, v4, ...)
 // Ini yang memaksa browser membuang cache lama dan ambil aset baru.
-const CACHE_VERSION = 'trade-app-v18-ocr';
+const CACHE_VERSION = 'trade-app-v19-avatar';
 const STATIC_ASSETS = ['./', './index.html', './shortcut-url.js', './manifest.json', './icon-64.png', './icon-180.png', './icon-192.png', './icon-512.png'];
 
-// Library dari CDN yang dipakai aplikasi (Tailwind, flatpickr, SweetAlert, font,
-// Tesseract.js + data bahasa OCR). Disimpan supaya bisa dipakai walau jaringan HP lagi "tidur".
-const CDN_HOSTS = ['cdn.tailwindcss.com', 'cdn.jsdelivr.net', 'fonts.googleapis.com', 'fonts.gstatic.com', 'cdnjs.cloudflare.com', 'tessdata.projectnaptha.com'];
+// Library dari CDN yang dipakai aplikasi (Tailwind, flatpickr, SweetAlert, font).
+// Disimpan juga supaya aplikasi bisa tampil walau jaringan HP lagi "tidur".
+const CDN_HOSTS = ['cdn.tailwindcss.com', 'cdn.jsdelivr.net', 'fonts.googleapis.com', 'fonts.gstatic.com', 'cdnjs.cloudflare.com'];
 
 // Kalau jaringan belum menjawab sampai batas ini, pakai salinan tersimpan.
 const NETWORK_TIMEOUT_MS = 1500;
