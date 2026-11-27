@@ -11,6 +11,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="./icon-180.png">
 <meta name="apple-mobile-web-app-title" content="TradeApp">
     <script src="./Database.js"></script>
+    <script src="./shortcut-url.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -7298,23 +7299,23 @@
 
         // pintasan
         const cp = card('Pintasan');
-        // Binance. Android: meluncurkan aplikasi Binance langsung (tanpa path, jadi tidak memicu popup "Tautan ini tidak berfungsi").
-        // Perangkat lain (desktop/iOS): halaman Kelola Copy di web. Tautan buatan sendiri (tombol "Atur tautan") selalu didahulukan.
-        const isAndroid = /Android/i.test(navigator.userAgent);
-        const BN_APP = 'intent://#Intent;package=com.binance.dev;S.browser_fallback_url=' + encodeURIComponent('https://www.binance.com/id/copy-trading') + ';end';
-        const BN_WEB = 'https://www.binance.com/id/copy-trading/copy-management';
+        // Binance: satu tautan untuk semua perangkat. Di HP (app link terverifikasi) langsung masuk
+        // aplikasi Binance ke Kelola Copy; di desktop otomatis jadi www.binance.info di browser.
+        // Alamat & daftar host ada di shortcut-url.js, jadi gampang diganti tanpa menyentuh index.html.
+        const SU = window.SHORTCUT_URLS || {};
+        const BN_URL = SU.binance || 'https://app.binance.info/id/copy-trading/copy-management';
         let bnCustom = ''; try { bnCustom = localStorage.getItem('binanceLink') || ''; } catch (e) {}
-        const bnHref = bnCustom || (isAndroid ? BN_APP : BN_WEB);
-        cp.appendChild(row(isAndroid && !bnCustom ? 'Buka aplikasi Binance' : 'Binance Copy Trading', {
-            sub: bnCustom ? 'Memakai tautan buatan kamu' : (isAndroid ? 'Membuka aplikasi Binance, lanjut ke Copy Trading' : 'Halaman Kelola Copy di browser'),
-            href: bnHref, self: !bnCustom && isAndroid
+        const bnHref = bnCustom || BN_URL;
+        cp.appendChild(row('Binance Copy Trading', {
+            sub: bnCustom ? 'Memakai tautan buatan kamu' : 'HP: langsung ke aplikasi · Desktop: buka di browser',
+            href: bnHref
         }));
         cp.appendChild(row('Atur tautan Binance', { value: bnEditOpen ? 'Tutup' : '', onClick: () => { bnEditOpen = !bnEditOpen; renderProfilePage(); } }));
         if (bnEditOpen) {
             const ed = document.createElement('div'); ed.className = 'pf-edit';
             const tip = document.createElement('p');
-            tip.textContent = 'Di aplikasi Binance, buka halaman yang kamu mau (misalnya Kelola Copy), tekan Bagikan, salin tautannya, lalu tempel di sini. Hanya tautan binance.com yang diterima.';
-            const inp = document.createElement('input'); inp.type = 'url'; inp.placeholder = 'https://app.binance.com/...'; inp.value = bnCustom; inp.setAttribute('autocapitalize', 'off'); inp.setAttribute('autocomplete', 'off');
+            tip.textContent = 'Di aplikasi Binance, buka halaman yang kamu mau (misalnya Kelola Copy), tekan Bagikan, salin tautannya, lalu tempel di sini. Tautan binance.com dan binance.info diterima.';
+            const inp = document.createElement('input'); inp.type = 'url'; inp.placeholder = 'https://app.binance.info/id/copy-trading/copy-management'; inp.value = bnCustom; inp.setAttribute('autocapitalize', 'off'); inp.setAttribute('autocomplete', 'off');
             const btns = document.createElement('div'); btns.className = 'pf-btns';
             const bSave = document.createElement('button'); bSave.type = 'button'; bSave.className = 'primary'; bSave.textContent = 'Simpan';
             const bReset = document.createElement('button'); bReset.type = 'button'; bReset.textContent = 'Pakai bawaan';
@@ -7322,20 +7323,23 @@
                 const v = inp.value.trim();
                 try {
                     const u = new URL(v);
-                    if (u.protocol !== 'https:' || !/(^|\.)binance\.com$/i.test(u.hostname)) throw new Error('host');
+                    const hosts = Array.isArray(SU.binanceHosts) ? SU.binanceHosts.map(h => String(h).toLowerCase())
+                        : ['binance.com', 'www.binance.com', 'app.binance.com', 'accounts.binance.com', 'binance.info', 'www.binance.info', 'app.binance.info', 'accounts.binance.info'];
+                    if (u.protocol !== 'https:' || hosts.indexOf(u.hostname.toLowerCase()) < 0) throw new Error('host');
                     localStorage.setItem('binanceLink', u.href);
-                } catch (e) { showToast('Tautan harus https dari binance.com', 'error'); return; }
+                } catch (e) { showToast('Tautan harus https dari binance.com atau binance.info', 'error'); return; }
                 bnEditOpen = false; renderProfilePage(); showToast('Tautan Binance disimpan', 'success');
             });
             bReset.addEventListener('click', () => { try { localStorage.removeItem('binanceLink'); } catch (e) {} bnEditOpen = false; renderProfilePage(); showToast('Kembali ke tautan bawaan', 'success'); });
             btns.append(bReset, bSave); ed.append(tip, inp, btns); cp.appendChild(ed);
         }
 
-        // Google Sheet: tautan diisi sendiri (tersimpan di perangkat ini, per akun)
+        // Google Sheet: memakai tautan bawaan dari shortcut-url.js, bisa ditimpa per akun di perangkat ini.
         const shKey = 'sheetLink:' + pv.id;
-        let shLink = ''; try { shLink = localStorage.getItem(shKey) || ''; } catch (e) {}
+        let shCustom = ''; try { shCustom = localStorage.getItem(shKey) || ''; } catch (e) {}
+        const shLink = shCustom || SU.sheet || '';
         cp.appendChild(row('Google Sheet', shLink
-            ? { sub: 'Buka Sheet data trading', href: shLink }
+            ? { sub: shCustom ? 'Memakai tautan buatan kamu' : 'Buka Sheet data trading', href: shLink }
             : { sub: 'Belum diatur. Ketuk "Atur tautan Sheet" di bawah' }));
         cp.appendChild(row('Atur tautan Sheet', { value: shEditOpen ? 'Tutup' : '', onClick: () => { shEditOpen = !shEditOpen; renderProfilePage(); } }));
         if (shEditOpen) {

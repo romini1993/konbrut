@@ -1,7 +1,7 @@
 // Naikkan versi ini SETIAP kali kamu deploy perubahan (v2, v3, v4, ...)
 // Ini yang memaksa browser membuang cache lama dan ambil aset baru.
-const CACHE_VERSION = 'trade-app-v16-icon';
-const STATIC_ASSETS = ['./', './index.html', './manifest.json', './icon-64.png', './icon-180.png', './icon-192.png', './icon-512.png'];
+const CACHE_VERSION = 'trade-app-v17-shortcut';
+const STATIC_ASSETS = ['./', './index.html', './shortcut-url.js', './manifest.json', './icon-64.png', './icon-180.png', './icon-192.png', './icon-512.png'];
 
 // Library dari CDN yang dipakai aplikasi (Tailwind, flatpickr, SweetAlert, font).
 // Disimpan juga supaya aplikasi bisa tampil walau jaringan HP lagi "tidur".
