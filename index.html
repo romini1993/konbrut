@@ -168,6 +168,10 @@
             transform: translateY(-2px);
             box-shadow: 0 10px 24px rgba(0,0,0,.35);
         }
+        /* HP: efek hover bikin layer komposit kerja terus saat scroll. Matikan. */
+        @media (hover: none) {
+            .row-card:hover { transform: none; box-shadow: none; }
+        }
 
         .section-label {
             font-size: 13px;
@@ -1879,18 +1883,26 @@
         function leadLabel(id) { return leadInfo(id).nama; }
         function leadColor(id) { return leadInfo(id).warna || '#a5a8ff'; }
         // Avatar lead: foto kalau ada, kalau tidak inisial dengan warna lead. Aman untuk nama China/Korea/Jepang.
+        // HTML di-cache per (id, ukuran): ratusan kartu riwayat tidak perlu bikin string + escape berulang.
+        const leadAvatarCache = new Map();
         function leadAvatarHtml(id, size, override) {
+            const key = override ? '' : `${id}|${Math.round(size || 20)}`;
+            if (key && leadAvatarCache.has(key)) return leadAvatarCache.get(key);
             const info = override ? Object.assign({ id: '', nama: '', warna: '#94a3b8', foto: '' }, override) : leadInfo(id);
             const px = Math.max(14, Math.round(size || 20));
             const clr = /^#[0-9a-fA-F]{6}$/.test(info.warna) ? info.warna : '#a5a8ff';
             const initial = Array.from(String(info.nama || info.id || '?'))[0] || '?';
             const base = `width:${px}px;height:${px}px;border-radius:9999px;display:inline-flex;align-items:center;justify-content:center;flex:none;overflow:hidden;border:1px solid ${clr};font-size:${Math.max(9, Math.round(px * 0.48))}px;font-weight:800;line-height:1`;
-            if (info.foto) return `<img src="${escHtml(info.foto)}" alt="" draggable="false" style="${base};object-fit:cover">`;
-            return `<span style="${base};background:${clr}22;color:${clr}">${escHtml(initial)}</span>`;
+            const html = info.foto
+                ? `<img src="${escHtml(info.foto)}" alt="" draggable="false" loading="lazy" decoding="async" style="${base};object-fit:cover">`
+                : `<span style="${base};background:${clr}22;color:${clr}">${escHtml(initial)}</span>`;
+            if (key) leadAvatarCache.set(key, html);
+            return html;
         }
         // Isi semua dropdown lead (form, edit, filter riwayat, impor) dari master di Sheet.
         function applyLeadOptions(data) {
             if (!data || !Array.isArray(data.leads) || !data.leads.length) return;
+            leadAvatarCache.clear();   // nama/foto lead berubah -> avatar lama tidak dipakai lagi
             LEADS = data.leads.slice();
             LEADS_ARSIP = Array.isArray(data.leadsArsip) ? data.leadsArsip.slice() : [];
             currentLeadId = validLeadId(currentLeadId);
@@ -3629,13 +3641,9 @@
             listSorted(data).forEach((item, i) => c.appendChild(createTradeCardElement(item, i)));
         }
 
-        function formatRupiah(amount) {
-            return new Intl.NumberFormat('id-ID', {
-                style: 'currency',
-                currency: 'IDR',
-                maximumFractionDigits: 0
-            }).format(amount);
-        }
+        // Intl.NumberFormat itu mahal dibuat berulang. Satu instance dipakai semua kartu.
+        const IDR_FMT = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 });
+        function formatRupiah(amount) { return IDR_FMT.format(amount); }
 
         function recalcTotals() {
             let sumPnl = 0, wins = 0;
@@ -3884,38 +3892,43 @@
                 });
         };
 
-        // Tahan lama pada baris -> isian terisi -> action sheet muncul.
-        // Dilepas / digeser sebelum penuh = batal.
-        function bindLongPress(element, no) {
-            element.classList.add('hold-target');
-            let pressTimer = null;
-
-            const clear = () => {
-                clearTimeout(pressTimer);
-                pressTimer = null;
-                element.classList.remove('holding');
-            };
-
-            const start = (e) => {
-                if (e.type === 'mousedown' && e.button !== 0) return; // klik kiri saja
-                clear();
-                element.classList.add('holding');
-                pressTimer = setTimeout(() => {
-                    pressTimer = null;
-                    element.classList.remove('holding');
-                    if (navigator.vibrate) navigator.vibrate(50);
-                    handleHapus(no);
-                }, HOLD_ROW_MS);
-            };
-
-            element.addEventListener('mousedown', start);
-            element.addEventListener('touchstart', start, { passive: true });
-
-            ['mouseup', 'mouseleave', 'touchend', 'touchmove', 'touchcancel'].forEach(ev => element.addEventListener(ev, clear));
-            element.addEventListener('contextmenu', (e) => {
-                e.preventDefault();
-            });
+        // Tahan lama pada baris -> action sheet muncul. Dilepas/digeser sebelum penuh = batal.
+        // SATU set listener untuk semua kartu (delegasi), bukan 8 listener per baris:
+        // 500 trade dulu bikin ~4000 listener dan bikin pindah tab terasa berat di HP.
+        let rowHoldTimer = null, rowHoldEl = null;
+        function clearRowHold() {
+            if (rowHoldTimer) { clearTimeout(rowHoldTimer); rowHoldTimer = null; }
+            if (rowHoldEl) { rowHoldEl.classList.remove('holding'); rowHoldEl = null; }
         }
+        function startRowHold(e) {
+            if (e.type === 'mousedown' && e.button !== 0) return;
+            const card = e.target && e.target.closest ? e.target.closest('.row-card[data-no]') : null;
+            if (!card) return;
+            clearRowHold();
+            rowHoldEl = card;
+            card.classList.add('holding');
+            const no = card.dataset.no;
+            rowHoldTimer = setTimeout(() => {
+                rowHoldTimer = null;
+                card.classList.remove('holding');
+                rowHoldEl = null;
+                if (navigator.vibrate) navigator.vibrate(50);
+                card._holdFired = true;
+                handleHapus(no);
+            }, HOLD_ROW_MS);
+        }
+        (function initRowHoldDelegation() {
+            const passive = { passive: true };
+            document.addEventListener('mousedown', startRowHold);
+            document.addEventListener('touchstart', startRowHold, passive);
+            ['mouseup', 'mouseleave', 'touchend', 'touchmove', 'touchcancel'].forEach(ev =>
+                document.addEventListener(ev, clearRowHold, passive));
+            document.addEventListener('contextmenu', e => {
+                const card = e.target && e.target.closest ? e.target.closest('.row-card[data-no]') : null;
+                if (card) e.preventDefault();
+            });
+            window.addEventListener('scroll', clearRowHold, passive);
+        })();
 
         // Kartu trade dipakai bareng di Riwayat Trade & panel expand Rekap Harian
         function createTradeCardElement(item, i, forceAnimate) {
@@ -3933,13 +3946,18 @@
             // Avatar lead dapat kolom sendiri (36px) supaya fotonya jelas. Nama lead pindah ke baris PROFIT/LOSS.
             const leadAvatar = `<span class="shrink-0" title="Lead: ${escHtml(leadNm)}">${leadAvatarHtml(item.lead, 36)}</span>`;
 
-            const shouldAnimate = forceAnimate || animateRows;
+            // Animasi cuma untuk beberapa baris teratas. Ratusan animasi + delay panjang
+            // bikin scroll & pindah tab patah-patah di HP.
+            const isPhone = window.matchMedia && window.matchMedia('(max-width: 767px)').matches;
+            const shouldAnimate = (forceAnimate || animateRows) && i < (isPhone ? 12 : 40);
             // saat diurutkan menurut Opened, baris menampilkan tanggal Opened (diberi awalan "O:") supaya urutannya terlihat jelas
             const fmtDMY = (v) => { const t = String(v || '').trim(); if (!t) return ''; if (t.indexOf('/') > -1) return t; const m = t.split('T')[0].match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/); return m ? `${m[3].padStart(2, '0')}/${m[2].padStart(2, '0')}/${m[1]}` : t; };
             const dateLabel = (typeof histSortMode !== 'undefined' && histSortMode === 'opened') ? `<span class="text-slate-500">O:</span> ${fmtDMY(item.opened) || item.closed}` : item.closed;
             const div = document.createElement('div');
             div.className = `row-card entrance-item ${shouldAnimate ? 'rise-in' : ''} p-2.5 sm:p-3 rounded-xl border ${bgCard} flex items-center justify-between hover:border-slate-700 transition gap-2 cursor-pointer select-none`;
-            if (i !== undefined) div.style.animationDelay = `${i * 15}ms`;
+            if (i !== undefined) div.style.animationDelay = `${Math.min(i, 20) * 12}ms`;
+            div.dataset.no = item.no;
+            div.classList.add('hold-target');
             div.innerHTML = `
                 ${leadAvatar}
                 <div class="flex-1 min-w-0 text-left">
@@ -3960,7 +3978,6 @@
                 </div>
             `;
 
-            bindLongPress(div, item.no);
             return div;
         }
 
@@ -4799,18 +4816,10 @@
         }
 
         // Angka USDT di kartu: koma = ribuan, titik = desimal -> +1,000.18 / -0.01
-        function fmtNumUS(v) {
-            const t = new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Math.abs(v));
-            return (v >= 0 ? '+' : '-') + t;
-        }
+        const NUM_US_FMT = new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        function fmtNumUS(v) { return (v >= 0 ? '+' : '-') + NUM_US_FMT.format(Math.abs(v)); }
         // Angka Rupiah di kartu: titik = ribuan, tanpa desimal -> Rp 1.250.000
-        function formatRupiahCard(amount) {
-            return new Intl.NumberFormat('id-ID', {
-                style: 'currency',
-                currency: 'IDR',
-                maximumFractionDigits: 0
-            }).format(amount);
-        }
+        function formatRupiahCard(amount) { return IDR_FMT.format(amount); }
 
         // Tanggal apa pun dari sheet -> dd/mm/yyyy
         function formatDateDMY(v) {
