@@ -154,6 +154,9 @@ Yang berubah di aplikasi
   Kartu "Lead & sorotan" juga menampilkan semua lead yang punya trade (dulu cuma 5).
 - v32: data lama dengan kolom O = "utama"/kosong/"abuSaad12-Closed" kini dibaca sebagai
   "Utama"/"abuSaad12 Closed". Id lain tetap case-sensitive. Perlu deploy code.gs baru.
+- Diagnosa/perbaikan Sheet: jalankan `adminCekLead()` atau `adminPerbaikiLead()` dari editor Apps Script.
+  Fungsi terakhir menulis ulang kolom O ke id master yang persis tanpa menyentuh kolom lain.
+  Cek backend aktif lewat `?action=ping` → `v:3, leadFix:'v32'`.
 - Impor massal: dropdown lead tujuan + avatar; duplikat dicek per lead.
 - ANTI-DUPLIKAT: pengecekan memakai JUMLAH kemunculan, bukan sekadar ada/tidaknya. Trade scalping
   yang tanggal/pair/side/PNL-nya identik (mis. SOXL 05/11 Buy 0.03 berulang) tetap dianggap transaksi

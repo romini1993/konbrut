@@ -256,6 +256,10 @@ Tata letak desktop & tampilan Riwayat
 - v32: lead lama yang kolom O-nya masih "utama", kosong, atau memakai pemisah '-' (misal
   "abuSaad12-Closed") sekarang dibaca sebagai lead master yang benar ("Utama" / "abuSaad12 Closed").
   Id tetap case-sensitive; "my-DreAM" dan "My-Dream" tidak digabung. Perlu deploy code.gs baru.
+- code.gs juga punya `adminCekLead()` (lihat isi kolom O + tujuan bacaannya) dan
+  `adminPerbaikiLead()` (tulis ulang kolom O ke id master yang persis, kolom lain tidak disentuh).
+  Jalankan dari editor Apps Script kalau data lama masih tercampur; aman diulang.
+  `?action=ping` sekarang mengembalikan `v:3, leadFix:'v32'` untuk cek backend sudah aktif.
 - Riwayat Trade: header "Riwayat Trade" sekarang bisa diketuk seperti header "Rekap Harian".
   Seluruh filter (cari pair, lead, Side/Hasil, urutan, atur urutan, dan kalender rentang)
   dipindah ke modal filter bergaya Impor, keluar dari #tabPager. Ini memperbaiki bug HP:
