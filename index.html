@@ -1851,14 +1851,29 @@
             return String(s === undefined || s === null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
         }
         // Id lead case-sensitive: "my-DreAM" dan "My-Dream" adalah dua lead berbeda.
+        // Dua penyesuaian aman untuk data lama (sama dengan code.gs):
+        //  - "utama" / "Utama" = satu lead default; id aslinya diambil dari master.
+        //  - '-', '_' dan spasi dianggap sama, jadi "abuSaad12-Closed" tetap ketemu
+        //    kalau master sudah jadi "abuSaad12 Closed". Huruf besar/kecil TIDAK diubah.
+        function normLeadId(id) {
+            return String(id === undefined || id === null ? '' : id).trim().replace(/[\s\-_]+/g, ' ');
+        }
+        function isDefaultLeadAlias(id) {
+            return String(id === undefined || id === null ? '' : id).trim().toLowerCase() === 'utama';
+        }
+        function defaultLeadId() {
+            for (let i = 0; i < LEADS.length; i++) if (isDefaultLeadAlias(LEADS[i].id)) return LEADS[i].id;
+            return LEADS.length ? LEADS[0].id : 'utama';
+        }
         function validLeadId(id) {
             const x = String(id === undefined || id === null ? '' : id).trim();
-            if (!x) {
-                for (let i = 0; i < LEADS.length; i++) if (LEADS[i].id === 'utama') return 'utama';
-                return LEADS.length ? LEADS[0].id : 'utama';
-            }
+            const def = defaultLeadId();
+            if (!x) return def;
             for (let i = 0; i < LEADS.length; i++) if (LEADS[i].id === x) return x;
-            return LEADS.length ? LEADS[0].id : 'utama';
+            const nx = normLeadId(x), hits = LEADS.filter(l => normLeadId(l.id) === nx);
+            if (hits.length === 1) return hits[0].id;
+            if (isDefaultLeadAlias(x)) return def;
+            return def;
         }
         function rememberLead(id) {
             currentLeadId = validLeadId(id);
@@ -1871,9 +1886,16 @@
             if (x) {
                 for (let i = 0; i < LEADS.length; i++) if (LEADS[i].id === x) return LEADS[i];
                 for (let i = 0; i < LEADS_ARSIP.length; i++) if (LEADS_ARSIP[i].id === x) return LEADS_ARSIP[i];
+                const nx = normLeadId(x);
+                const near = LEADS.find(l => normLeadId(l.id) === nx) || LEADS_ARSIP.find(l => normLeadId(l.id) === nx);
+                if (near) return near;
             }
-            if (!x) for (let i = 0; i < LEADS.length; i++) if (LEADS[i].id === 'utama') return LEADS[i];
-            return { id: 'utama', nama: 'Lead Utama', warna: '#a5a8ff', foto: '' };
+            if (!x || isDefaultLeadAlias(x)) {
+                const def = defaultLeadId();
+                for (let i = 0; i < LEADS.length; i++) if (LEADS[i].id === def) return LEADS[i];
+                for (let i = 0; i < LEADS_ARSIP.length; i++) if (LEADS_ARSIP[i].id === def) return LEADS_ARSIP[i];
+            }
+            return { id: defaultLeadId(), nama: 'Lead Utama', warna: '#a5a8ff', foto: '' };
         }
         function leadLabel(id) { return leadInfo(id).nama; }
         function leadColor(id) { return leadInfo(id).warna || '#a5a8ff'; }
@@ -1961,7 +1983,7 @@
                 + `<button type="button" data-lead="${escHtml(l.id)}" class="flex-1 min-w-0 flex items-center gap-2.5 px-2 py-2 text-[12px] text-left text-slate-200">`
                 + leadAvatarHtml(l.id, cfg.size, l)
                 + `<span class="truncate">${escHtml(l.nama)}</span></button>`
-                + (cfg.hapus && l.id !== 'utama'
+                + (cfg.hapus && !isDefaultLeadAlias(l.id)
                     ? `<button type="button" data-edit="${escHtml(l.id)}" class="shrink-0 px-2 py-1.5 text-[10px] font-bold text-amber-300 hover:text-amber-200" title="Edit lead ${escHtml(l.nama)}">EDIT</button>`
                     : '')
                 + `</div>`
@@ -6311,7 +6333,7 @@
     function impParse(text, existing, opt) {
         const rows = [], ok = [], errs = [], bf = []; let dup = 0;
         // Duplikat dicek hanya di lead tujuan: trade yang sama di lead lain bukan duplikat.
-        const lid = (opt && opt.lead) ? validLeadId(opt.lead) : 'utama';
+        const lid = (opt && opt.lead) ? validLeadId(opt.lead) : defaultLeadId();
         // Anti-duplikat: yang dibandingkan ke Sheet adalah JUMLAH kemunculan, bukan keberadaan.
         // Trade scalping sering punya tanggal/pair/side/PNL identik (0.01, 0.03, ... berulang)
         // tapi tetap transaksi berbeda. Baris identik DALAM satu tempelan jadi tidak boleh dianggap dup.
