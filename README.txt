@@ -4,7 +4,7 @@ PATCH: DATA PER LEAD (trader yang diikuti)
 File hasil patch ada di folder ini:
 - code.gs       -> ganti isi Code.gs di Apps Script lalu DEPLOY ulang (ada action=renameLead baru)
 - index.html    -> ganti index.html di repo GitHub
-- sw.js         -> ganti sw.js di repo GitHub (cache version sudah naik jadi v32-lead-alias)
+- sw.js         -> ganti sw.js di repo GitHub (cache version sudah naik jadi v33-all-master-leads)
 - manifest.json   -> ganti manifest.json di repo GitHub (nama/short_name + icon lokal 192/512).
 - icon-64.png     -> favicon tab browser (64x64).
 - icon-180.png    -> apple-touch-icon untuk home screen iOS.
@@ -34,7 +34,7 @@ Langkah pasang
 3. Apps Script -> Terapkan -> Kelola deployment -> pensil -> Versi: Versi baru -> Terapkan.
    Link /exec tidak berubah, jadi Database.js tidak perlu diedit.
 4. Push index.html dan sw.js ke GitHub (repo romini1993/konbrut).
-5. Buka aplikasi. Service worker v32 akan membuang cache lama otomatis.
+5. Buka aplikasi. Service worker v33 akan membuang cache lama otomatis.
 
 PENTING untuk fitur ambil dari link
 -----------------------------------
@@ -232,7 +232,7 @@ Perbaikan performa HP & orientasi
   avatar di-cache per (id, ukuran) + lazy-load, animasi cuma 12 kartu teratas di HP.
 - Efek hover kartu dimatikan di perangkat layar sentuh supaya scroll tidak bikin layer komposit kerja terus.
 - `manifest.json`: orientation diubah dari `portrait` ke `any`, jadi HP bisa landscape / mode desktop
-  lagi kalau dipiringin. (Cache v32 perlu di-refresh supaya manifest lama terbuang.)
+  lagi kalau dipiringin. (Cache v33 perlu di-refresh supaya manifest lama terbuang.)
 
 Tata letak desktop & tampilan Riwayat
 --------------------------------------
@@ -253,6 +253,9 @@ Tata letak desktop & tampilan Riwayat
   trade terakhir tetap ada di bawah daftar lead.
 - Daftar "Per lead (total P&L)" di modal Statistik lanjutan juga tidak dibatasi 8 lead lagi;
   sekarang ikut menampilkan semua lead. Berlaku sama di HP dan desktop.
+- v33: "Lead & sorotan" dan "Per lead (total P&L)" sekarang menampilkan SEMUA lead di tab Lead
+  (aktif + arsip + lead yang nanti ditambahkan), walaupun belum punya trade. Lead tanpa transaksi
+  muncul dengan `0 trade` dan `+0.00`; urutan tetap P&L terbesar di atas. Berlaku di HP & desktop.
 - v32: lead lama yang kolom O-nya masih "utama", kosong, atau memakai pemisah '-' (misal
   "abuSaad12-Closed") sekarang dibaca sebagai lead master yang benar ("Utama" / "abuSaad12 Closed").
   Id tetap case-sensitive; "my-DreAM" dan "My-Dream" tidak digabung. Perlu deploy code.gs baru.
@@ -312,7 +315,7 @@ Ganti ikon aplikasi
    icon-64.png untuk favicon tab, icon-180.png untuk apple-touch-icon iOS.
 3. manifest.json memakai icon-192.png ("any") dan icon-512.png ("any maskable").
    Jangan pakai URL CDN /128/ lalu diklaim 512x512 — hasilnya buram dan bisa gagal install.
-4. Push juga sw.js (v32-lead-alias) supaya cache lama dibuang.
+4. Push juga sw.js (v33-all-master-leads) supaya cache lama dibuang.
 5. Nama di bawah icon diatur lewat "short_name"; warna status bar lewat "theme_color".
 
 Pintasan Profil (Binance & Sheet)

@@ -6106,6 +6106,20 @@
     /*PURE_START*/
     const _k = s => { const d = parseClosedDate(s); return d ? d.getTime() : 0; };
     const _p = t => parseFloat(t.pnl) || 0;
+    // Semua lead master (aktif + arsip) DITAMBAH lead yang muncul di riwayat.
+    // Jadi kartu statistik selalu menampilkan semua lead, termasuk yang belum punya trade
+    // dan lead yang nanti ditambahkan, tanpa perlu daftar hardcode.
+    function leadIdsUntukStats(r) {
+        const ids = [], seen = {};
+        const tambah = id => {
+            const x = String(id === undefined || id === null ? '' : id).trim();
+            if (x && !seen[x]) { seen[x] = true; ids.push(x); }
+        };
+        (typeof LEADS === 'object' && LEADS ? LEADS : []).forEach(l => tambah(l && l.id));
+        (typeof LEADS_ARSIP === 'object' && LEADS_ARSIP ? LEADS_ARSIP : []).forEach(l => tambah(l && l.id));
+        Object.keys((r && r.leads) || {}).forEach(tambah);
+        return ids;
+    }
     function advStats(arr) {
         const c = arr.slice().sort((a, b) => (_k(a.closed) - _k(b.closed)) || ((parseInt(a.no) || 0) - (parseInt(b.no) || 0)));
         let gp = 0, gl = 0, w = 0, l = 0, cum = 0, peak = 0, dd = 0, ddPct = 0, cw = 0, cl = 0, mw = 0, ml = 0;
@@ -6637,20 +6651,22 @@
             $('advStatsNote').textContent = active() ? `sesuai filter · ${r.n} trade` : `${r.n} trade`;
             const G = 'text-emerald-400', R = 'text-rose-400', sd = r.sides;
             const sideTxt = k => sd[k].n ? `${sd[k].n}x · ${Math.round(sd[k].w / sd[k].n * 100)}% · ${f2(sd[k].p)}` : '-';
-            $('advStatsBody').innerHTML = r.n ? [
+            const leadBlock = `<div class="col-span-2 bg-[var(--surface-2)] rounded-xl p-2.5 min-w-0">
+                <div class="text-[10px] text-slate-400 mb-1.5">Per lead (total P&amp;L)</div>
+                ${leadIdsUntukStats(r).sort((a, b) => (r.leads[b] || 0) - (r.leads[a] || 0)).map(id => {
+                    const v = r.leads[id] || 0, c = v >= 0 ? G : R;
+                    return `<div class="flex justify-between gap-2 text-[11px] leading-5"><span class="truncate text-slate-200">${escHtml(leadLabel(id))}</span><span class="num font-bold shrink-0 ${c}">${f2(v)}</span></div>`;
+                }).join('')}
+            </div>`;
+            const statBlocks = [
                 box('Win rate', r.wr + '%'), box('Profit factor', r.pf === null ? '-' : (isFinite(r.pf) ? r.pf.toFixed(2) : '∞'), r.pf !== null && r.pf >= 1 ? G : R),
                 box('Rata-rata profit', f2(r.avgW), G), box('Rata-rata loss', r.l ? '-' + r.avgL.toFixed(2) : '-', R),
                 box('Max drawdown', r.dd > 0 ? `-${r.dd.toFixed(2)} (${r.ddPct.toFixed(1)}%)` : '0', r.dd > 0 ? R : ''), box('Streak menang / kalah', `${r.mw} / ${r.ml}`),
                 box('Pair terbaik', r.best ? `${r.best[0]} ${f2(r.best[1])}` : '-', G), box('Pair terburuk', r.worst ? `${r.worst[0]} ${f2(r.worst[1])}` : '-', R),
-                box('Buy (jumlah · win · total)', sideTxt('Buy')), box('Sell (jumlah · win · total)', sideTxt('Sell')),
-                `<div class="col-span-2 bg-[var(--surface-2)] rounded-xl p-2.5 min-w-0">
-                    <div class="text-[10px] text-slate-400 mb-1.5">Per lead (total P&amp;L)</div>
-                    ${Object.entries(r.leads).sort((a, b) => b[1] - a[1]).map(([id, v]) => {
-                        const c = v >= 0 ? G : R;
-                        return `<div class="flex justify-between gap-2 text-[11px] leading-5"><span class="truncate text-slate-200">${escHtml(leadLabel(id))}</span><span class="num font-bold shrink-0 ${c}">${f2(v)}</span></div>`;
-                    }).join('')}
-                </div>`
-            ].join('') : '<div class="col-span-2 text-center text-xs text-[var(--text-faint)] py-4">Belum ada trade yang cocok.</div>';
+                box('Buy (jumlah · win · total)', sideTxt('Buy')), box('Sell (jumlah · win · total)', sideTxt('Sell'))
+            ];
+            $('advStatsBody').innerHTML = (r.n ? statBlocks.concat(leadBlock) : [leadBlock]).join('') ||
+                '<div class="col-span-2 text-center text-xs text-[var(--text-faint)] py-4">Belum ada lead.</div>';
             $('advStatsModal').classList.remove('hidden');
         };
 
@@ -7740,11 +7756,10 @@
     function renderStatsSide() {
         const host = $('statsSideBody'); if (!host || typeof advStats !== 'function') return;
         let arr = []; try { arr = (cachedGlobalResponse && cachedGlobalResponse.history) || []; } catch (e) {}
-        if (!arr.length) { host.innerHTML = '<div class="adv-empty">Belum ada trade.</div>'; return; }
         const r = advStats(arr), f2 = v => (v >= 0 ? '+' : '') + v.toFixed(2);
         const counts = {}; arr.forEach(t => { const id = getTradeLead(t); counts[id] = (counts[id] || 0) + 1; });
-        const leadRows = Object.keys(r.leads).sort((a, b) => r.leads[b] - r.leads[a]).map(id => {
-            const v = r.leads[id], nm = escHtml(leadInfo(id).nama);
+        const leadRows = leadIdsUntukStats(r).sort((a, b) => (r.leads[b] || 0) - (r.leads[a] || 0)).map(id => {
+            const v = r.leads[id] || 0, nm = escHtml(leadInfo(id).nama);
             return `<div class="flex items-center gap-2 bg-[var(--surface-2)] rounded-xl p-2">
                 ${leadAvatarHtml(id, 20)}
                 <div class="min-w-0 flex-1"><div class="text-[10px] text-[var(--text-dim)] truncate">${nm}</div><div class="text-[9px] text-[var(--text-faint)]">${counts[id] || 0} trade</div></div>
