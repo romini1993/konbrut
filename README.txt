@@ -33,7 +33,7 @@ Langkah pasang
    Fungsi ini hanya mengisi kolom O yang kosong. Id yang sudah ada dibiarkan apa adanya.
 3. Apps Script -> Terapkan -> Kelola deployment -> pensil -> Versi: Versi baru -> Terapkan.
    Link /exec tidak berubah, jadi Database.js tidak perlu diedit.
-4. Push index.html dan sw.js ke GitHub (repo romini1993/sample).
+4. Push index.html dan sw.js ke GitHub (repo romini1993/konbrut).
 5. Buka aplikasi. Service worker v30 akan membuang cache lama otomatis.
 
 PENTING untuk fitur ambil dari link
