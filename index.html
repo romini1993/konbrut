@@ -6501,10 +6501,10 @@
         const rSum = document.createElement('div'); rSum.id = 'riwayatSum'; rSum.className = 'hidden';
         if (list && list.parentNode) list.parentNode.insertBefore(rSum, list);
 
-        // Ringkasan total ala #rekapSum, muncul di Riwayat saat tampilan grup aktif.
+        // Ringkasan total ala #rekapSum, muncul di Riwayat di KEDUA tampilan (Per hari & Daftar penuh).
         function paintRiwayatSum(rows) {
             if (!rSum) return;
-            if (!groupingOn() || !rows.length) { rSum.classList.add('hidden'); rSum.innerHTML = ''; return; }
+            if (!rows.length) { rSum.classList.add('hidden'); rSum.innerHTML = ''; return; }
             const keys = Array.from(new Set(rows.map(groupKey).filter(Boolean)));
             const openedMode = typeof histSortMode !== 'undefined' && histSortMode === 'opened';
             const dmy = k => /^\d{2}\/\d{2}\/\d{4}$/.test(k) ? k : (typeof fmtDMY === 'function' ? fmtDMY(k) : k);
