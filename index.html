@@ -7287,6 +7287,11 @@
     .hist-view-switch button.on { background: var(--accent); color: #ffffff; }
     #histViewBar { margin-top: 2px; }
 
+    /* Lead & sorotan: baris lead bisa diketuk, langsung buka Riwayat yang sudah terfilter lead itu. */
+    .stat-lead-row { cursor: pointer; transition: box-shadow .15s ease, transform .12s ease; }
+    .stat-lead-row:hover { box-shadow: inset 0 0 0 1px rgba(89,96,229,.5); }
+    .stat-lead-row:active { transform: scale(.985); }
+
     #fltReorder, #histQuickReorder { display: inline-flex; align-items: center; gap: 5px; margin-left: auto; padding: 5px 10px; border-radius: 8px; border: 1px solid transparent; background: var(--surface-2); color: var(--text-dim); cursor: pointer; white-space: nowrap; transition: background .15s ease, color .15s ease; }
     #fltReorder span, #histQuickReorder span { font-size: 11px; font-weight: 600; }
     #fltReorder.on, #histQuickReorder.on { background: var(--accent-dim); color: var(--accent-bright); border-color: rgba(89, 96, 229, .55); }
@@ -7830,7 +7835,7 @@
         const counts = {}; arr.forEach(t => { const id = getTradeLead(t); counts[id] = (counts[id] || 0) + 1; });
         const leadRows = leadIdsUntukStats(r).sort((a, b) => (r.leads[b] || 0) - (r.leads[a] || 0)).map(id => {
             const v = r.leads[id] || 0, nm = escHtml(leadInfo(id).nama);
-            return `<div class="flex items-center gap-2 bg-[var(--surface-2)] rounded-xl p-2">
+            return `<div class="stat-lead-row flex items-center gap-2 bg-[var(--surface-2)] rounded-xl p-2" data-lihat-lead="${escHtml(id)}" role="button" tabindex="0" title="Lihat riwayat ${nm}">
                 ${leadAvatarHtml(id, 20)}
                 <div class="min-w-0 flex-1"><div class="text-[10px] text-[var(--text-dim)] truncate">${nm}</div><div class="text-[9px] text-[var(--text-faint)]">${counts[id] || 0} trade</div></div>
                 <div class="num text-[11px] font-bold ${v >= 0 ? 'text-emerald-400' : 'text-rose-400'}">${f2(v)}</div>
@@ -7848,6 +7853,29 @@
                 ${mini('Hari terburuk', days.length ? `${days[days.length - 1][0]}<br><span class="${days[days.length - 1][1] >= 0 ? 'text-emerald-400' : 'text-rose-400'}">${f2(days[days.length - 1][1])}</span>` : '-')}
             </div>
             ${mini('Trade terakhir', last ? `${escHtml(last.pair)} · ${getTradeSide(last)} · <span class="${_p(last) >= 0 ? 'text-emerald-400' : 'text-rose-400'}">${f2(_p(last))}</span><br><span class="text-[9px] font-normal text-[var(--text-faint)]">${escHtml(String(last.closed || '-'))}</span>` : '-')}`;
+
+        // Ketuk / Enter pada baris lead: pindah ke Riwayat Trade lalu filter ke lead itu.
+        // <select id="fltLead"> tetap jadi sumber nilai, jadi tombol cepat & modal ikut sinkron.
+        host.querySelectorAll('[data-lihat-lead]').forEach(el => {
+            const bukaRiwayatLead = () => {
+                const id = el.dataset.lihatLead;
+                if (!id) return;
+                if (typeof setReorder === 'function') setReorder(false);
+                if (typeof closeStatsSheet === 'function') closeStatsSheet();
+                if (typeof closeRiwayatFilter === 'function') closeRiwayatFilter();
+                setView('riwayat');
+                if (typeof setFltLeadValue === 'function') {
+                    setFltLeadValue(id);
+                } else {
+                    const sel = $('fltLead');
+                    if (sel) { sel.value = id; sel.dispatchEvent(new Event('change', { bubbles: true })); }
+                }
+            };
+            el.addEventListener('click', bukaRiwayatLead);
+            el.addEventListener('keydown', e => {
+                if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); bukaRiwayatLead(); }
+            });
+        });
     }
 
     // Statistik lanjutan: tampil langsung di halaman Statistik (semua trade), diperbarui otomatis saat data berubah

@@ -4,7 +4,7 @@ PATCH: DATA PER LEAD (trader yang diikuti)
 File hasil patch ada di folder ini:
 - code.gs       -> ganti isi Code.gs di Apps Script
 - index.html    -> ganti index.html di repo GitHub
-- sw.js         -> ganti sw.js di repo GitHub (cache version sudah naik jadi v35-riwayat-sum-full)
+- sw.js         -> ganti sw.js di repo GitHub (cache version sudah naik jadi v36-lead-sorotan-klik)
 - manifest.json   -> ganti manifest.json di repo GitHub (nama/short_name + icon lokal 192/512).
 - icon-64.png     -> favicon tab browser (64x64).
 - icon-180.png    -> apple-touch-icon untuk home screen iOS.
@@ -34,7 +34,7 @@ Langkah pasang
 3. Apps Script -> Terapkan -> Kelola deployment -> pensil -> Versi: Versi baru -> Terapkan.
    Link /exec tidak berubah, jadi Database.js tidak perlu diedit.
 4. Push index.html dan sw.js ke GitHub (repo romini1993/konbrut).
-5. Buka aplikasi. Service worker v35 akan membuang cache lama otomatis.
+5. Buka aplikasi. Service worker v36 akan membuang cache lama otomatis.
 
 PENTING untuk fitur ambil dari link
 -----------------------------------
@@ -160,6 +160,9 @@ Yang berubah di aplikasi
   "Daftar penuh" karena panah geser hanya ada di kartu trade.
 - v35: baris TOTAL `#riwayatSum` (rentang tanggal · jumlah hari · jumlah trade · total
   USDT + rupiah) sekarang tampil juga di "Daftar penuh", bukan cuma di "Per hari".
+- v36: baris lead di kartu "Lead & sorotan" bisa diketuk (atau ditekan Enter/Spasi):
+  aplikasi pindah ke "Riwayat Trade" dengan filter lead itu aktif, tombol cepat dan
+  modal ikut sinkron. Tampilan "Per hari"/"Daftar penuh" yang sedang dipilih tetap dipertahankan.
 - v32: data lama dengan kolom O = "utama"/kosong/"abuSaad12-Closed" kini dibaca sebagai
   "Utama"/"abuSaad12 Closed". Id lain tetap case-sensitive. Perlu deploy code.gs baru.
 - Diagnosa/perbaikan Sheet: jalankan `adminCekLead()` atau `adminPerbaikiLead()` dari editor Apps Script.
@@ -213,7 +216,7 @@ Ganti ikon aplikasi
    icon-64.png untuk favicon tab, icon-180.png untuk apple-touch-icon iOS.
 3. manifest.json memakai icon-192.png ("any") dan icon-512.png ("any maskable").
    Jangan pakai URL CDN /128/ lalu diklaim 512x512 — hasilnya buram dan bisa gagal install.
-4. Push juga sw.js (v35-riwayat-sum-full) supaya cache lama dibuang.
+4. Push juga sw.js (v36-lead-sorotan-klik) supaya cache lama dibuang.
 5. Nama di bawah icon diatur lewat "short_name"; warna status bar lewat "theme_color".
 
 Pintasan Profil (Binance & Sheet)

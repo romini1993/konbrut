@@ -4,7 +4,7 @@ PATCH: DATA PER LEAD (trader yang diikuti)
 File hasil patch ada di folder ini:
 - code.gs       -> ganti isi Code.gs di Apps Script lalu DEPLOY ulang (ada action=renameLead baru)
 - index.html    -> ganti index.html di repo GitHub
-- sw.js         -> ganti sw.js di repo GitHub (cache version sudah naik jadi v35-riwayat-sum-full)
+- sw.js         -> ganti sw.js di repo GitHub (cache version sudah naik jadi v36-lead-sorotan-klik)
 - manifest.json   -> ganti manifest.json di repo GitHub (nama/short_name + icon lokal 192/512).
 - icon-64.png     -> favicon tab browser (64x64).
 - icon-180.png    -> apple-touch-icon untuk home screen iOS.
@@ -34,7 +34,7 @@ Langkah pasang
 3. Apps Script -> Terapkan -> Kelola deployment -> pensil -> Versi: Versi baru -> Terapkan.
    Link /exec tidak berubah, jadi Database.js tidak perlu diedit.
 4. Push index.html dan sw.js ke GitHub (repo romini1993/konbrut).
-5. Buka aplikasi. Service worker v35 akan membuang cache lama otomatis.
+5. Buka aplikasi. Service worker v36 akan membuang cache lama otomatis.
 
 PENTING untuk fitur ambil dari link
 -----------------------------------
@@ -232,7 +232,7 @@ Perbaikan performa HP & orientasi
   avatar di-cache per (id, ukuran) + lazy-load, animasi cuma 12 kartu teratas di HP.
 - Efek hover kartu dimatikan di perangkat layar sentuh supaya scroll tidak bikin layer komposit kerja terus.
 - `manifest.json`: orientation diubah dari `portrait` ke `any`, jadi HP bisa landscape / mode desktop
-  lagi kalau dipiringin. (Cache v35 perlu di-refresh supaya manifest lama terbuang.)
+  lagi kalau dipiringin. (Cache v36 perlu di-refresh supaya manifest lama terbuang.)
 
 Tata letak desktop & tampilan Riwayat
 --------------------------------------
@@ -249,6 +249,9 @@ Tata letak desktop & tampilan Riwayat
   * Baris TOTAL (rentang tanggal · jumlah hari · jumlah trade · total USDT + rupiah,
     memakai gaya #rekapSum) tampil di ATAS daftar di kedua tampilan.
   * v35: baris TOTAL itu sekarang ikut muncul di "Daftar penuh" (dulu cuma di "Per hari").
+  * v36: baris lead di kartu "Lead & sorotan" bisa diketuk (atau ditekan Enter/Spasi),
+    lalu aplikasi pindah ke "Riwayat Trade" dengan filter lead itu aktif. Tampilan
+    "Per hari"/"Daftar penuh" yang sedang dipilih tetap dipertahankan.
   * "Per hari": setelah baris TOTAL ada satu baris ringkasan per tanggal; ketuk baris
     untuk membuka kartu-kartu trade di dalamnya. Grup benar-benar per hari, walaupun
     Closed membawa jam.
@@ -324,7 +327,7 @@ Ganti ikon aplikasi
    icon-64.png untuk favicon tab, icon-180.png untuk apple-touch-icon iOS.
 3. manifest.json memakai icon-192.png ("any") dan icon-512.png ("any maskable").
    Jangan pakai URL CDN /128/ lalu diklaim 512x512 — hasilnya buram dan bisa gagal install.
-4. Push juga sw.js (v35-riwayat-sum-full) supaya cache lama dibuang.
+4. Push juga sw.js (v36-lead-sorotan-klik) supaya cache lama dibuang.
 5. Nama di bawah icon diatur lewat "short_name"; warna status bar lewat "theme_color".
 
 Pintasan Profil (Binance & Sheet)
