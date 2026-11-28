@@ -7721,7 +7721,7 @@
         if (!arr.length) { host.innerHTML = '<div class="adv-empty">Belum ada trade.</div>'; return; }
         const r = advStats(arr), f2 = v => (v >= 0 ? '+' : '') + v.toFixed(2);
         const counts = {}; arr.forEach(t => { const id = getTradeLead(t); counts[id] = (counts[id] || 0) + 1; });
-        const leadRows = Object.keys(r.leads).sort((a, b) => r.leads[b] - r.leads[a]).slice(0, 5).map(id => {
+        const leadRows = Object.keys(r.leads).sort((a, b) => r.leads[b] - r.leads[a]).map(id => {
             const v = r.leads[id], nm = escHtml(leadInfo(id).nama);
             return `<div class="flex items-center gap-2 bg-[var(--surface-2)] rounded-xl p-2">
                 ${leadAvatarHtml(id, 20)}
