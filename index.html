@@ -6623,7 +6623,7 @@
                 box('Buy (jumlah · win · total)', sideTxt('Buy')), box('Sell (jumlah · win · total)', sideTxt('Sell')),
                 `<div class="col-span-2 bg-[var(--surface-2)] rounded-xl p-2.5 min-w-0">
                     <div class="text-[10px] text-slate-400 mb-1.5">Per lead (total P&amp;L)</div>
-                    ${Object.entries(r.leads).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([id, v]) => {
+                    ${Object.entries(r.leads).sort((a, b) => b[1] - a[1]).map(([id, v]) => {
                         const c = v >= 0 ? G : R;
                         return `<div class="flex justify-between gap-2 text-[11px] leading-5"><span class="truncate text-slate-200">${escHtml(leadLabel(id))}</span><span class="num font-bold shrink-0 ${c}">${f2(v)}</span></div>`;
                     }).join('')}

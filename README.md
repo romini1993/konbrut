@@ -4,7 +4,7 @@ PATCH: DATA PER LEAD (trader yang diikuti)
 File hasil patch ada di folder ini:
 - code.gs       -> ganti isi Code.gs di Apps Script
 - index.html    -> ganti index.html di repo GitHub
-- sw.js         -> ganti sw.js di repo GitHub (cache version sudah naik jadi v30-all-leads)
+- sw.js         -> ganti sw.js di repo GitHub (cache version sudah naik jadi v31-all-lead-lists)
 - manifest.json   -> ganti manifest.json di repo GitHub (nama/short_name + icon lokal 192/512).
 - icon-64.png     -> favicon tab browser (64x64).
 - icon-180.png    -> apple-touch-icon untuk home screen iOS.
@@ -34,7 +34,7 @@ Langkah pasang
 3. Apps Script -> Terapkan -> Kelola deployment -> pensil -> Versi: Versi baru -> Terapkan.
    Link /exec tidak berubah, jadi Database.js tidak perlu diedit.
 4. Push index.html dan sw.js ke GitHub (repo romini1993/konbrut).
-5. Buka aplikasi. Service worker v30 akan membuang cache lama otomatis.
+5. Buka aplikasi. Service worker v31 akan membuang cache lama otomatis.
 
 PENTING untuk fitur ambil dari link
 -----------------------------------
@@ -150,7 +150,8 @@ Yang berubah di aplikasi
 - Pilihan lead terakhir diingat per akun (localStorage), jadi input berikutnya cepat.
 - Tiap baris riwayat ada badge nama lead + foto/inisial + warna sesuai master.
 - Filter riwayat: tombol lead dengan popup berisi foto + nama (plus "Semua lead").
-- Statistik Lanjutan: blok "Per lead (total P&L)".
+- Statistik Lanjutan: blok "Per lead (total P&L)" sekarang menampilkan SEMUA lead (dulu cuma 8).
+  Kartu "Lead & sorotan" juga menampilkan semua lead yang punya trade (dulu cuma 5).
 - Impor massal: dropdown lead tujuan + avatar; duplikat dicek per lead.
 - ANTI-DUPLIKAT: pengecekan memakai JUMLAH kemunculan, bukan sekadar ada/tidaknya. Trade scalping
   yang tanggal/pair/side/PNL-nya identik (mis. SOXL 05/11 Buy 0.03 berulang) tetap dianggap transaksi
@@ -199,7 +200,7 @@ Ganti ikon aplikasi
    icon-64.png untuk favicon tab, icon-180.png untuk apple-touch-icon iOS.
 3. manifest.json memakai icon-192.png ("any") dan icon-512.png ("any maskable").
    Jangan pakai URL CDN /128/ lalu diklaim 512x512 — hasilnya buram dan bisa gagal install.
-4. Push juga sw.js (v30-all-leads) supaya cache lama dibuang.
+4. Push juga sw.js (v31-all-lead-lists) supaya cache lama dibuang.
 5. Nama di bawah icon diatur lewat "short_name"; warna status bar lewat "theme_color".
 
 Pintasan Profil (Binance & Sheet)
